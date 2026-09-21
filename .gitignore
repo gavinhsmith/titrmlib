@@ -53,3 +53,12 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# TI-84 Plus CE Toolchain (CEdev) build artifacts
+obj/
+bin/*
+!bin/.gitkeep
+*.8xp
+*.8xv
+*.8ek
+*.8xg
