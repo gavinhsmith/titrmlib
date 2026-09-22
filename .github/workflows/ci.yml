@@ -53,3 +53,6 @@ jobs:
 
       - name: Build
         run: make
+
+      - name: Build hardware tests
+        run: make hw-build

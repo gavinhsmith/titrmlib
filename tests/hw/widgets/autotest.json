@@ -1,0 +1,131 @@
+{
+  "transfer_files": [
+    "bin/hw_widgets/TTWIDGET.8xp"
+  ],
+  "target": {
+    "name": "TTWIDGET",
+    "isASM": true
+  },
+  "delay_after_key": 300,
+  "sequence": [
+    "action|launch",
+    "hashWait|1",
+    "key|down",
+    "key|down",
+    "key|down",
+    "key|up",
+    "key|up",
+    "key|up",
+    "key|up",
+    "hashWait|2",
+    "key|down",
+    "key|down",
+    "key|enter",
+    "hashWait|3",
+    "key|vars",
+    "key|alpha",
+    "key|math",
+    "key|2nd",
+    "key|alpha",
+    "key|apps",
+    "key|prgm",
+    "key|alpha",
+    "key|1",
+    "key|2",
+    "key|3",
+    "key|left",
+    "key|left",
+    "key|del",
+    "hashWait|4",
+    "key|alpha",
+    "hashWait|5",
+    "key|enter",
+    "hashWait|6",
+    "key|vars",
+    "key|up",
+    "key|up",
+    "key|up",
+    "hashWait|7",
+    "key|vars",
+    "key|clear",
+    "hashWait|8"
+  ],
+  "hashes": {
+    "1": {
+      "description": "Start: list focused on item 1, log filled at start",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "C04A5739"
+      ]
+    },
+    "2": {
+      "description": "List wrapped upwards to item 30, scrolled, scrollbar at the bottom",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "EAAA7C39"
+      ]
+    },
+    "3": {
+      "description": "List wrapped down to item 1, [enter] selected item 2",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "48C1D258"
+      ]
+    },
+    "4": {
+      "description": "Input focused; alpha, alpha lock, digits, cursor moves and [del] typed ABC23",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "39E490DB"
+      ]
+    },
+    "5": {
+      "description": "One-shot alpha armed (status alpha:1)",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "64F8183A"
+      ]
+    },
+    "6": {
+      "description": "[enter] submitted ABC23 to the log and cleared the input",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "407DC3DC"
+      ]
+    },
+    "7": {
+      "description": "Log focused and scrolled back three lines",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "18EBA40D"
+      ]
+    },
+    "8": {
+      "description": "Program exited to a cleared home screen",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_16_size",
+      "expected_CRCs": [
+        "FFAF89BA",
+        "101734A5",
+        "9DA19F44",
+        "A32840C8",
+        "349F4775"
+      ]
+    }
+  }
+}

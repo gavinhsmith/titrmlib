@@ -1,0 +1,40 @@
+{
+  "transfer_files": [
+    "bin/hw_ticks/TTTICKS.8xp"
+  ],
+  "target": {
+    "name": "TTTICKS",
+    "isASM": true
+  },
+  "delay_after_key": 300,
+  "sequence": [
+    "action|launch",
+    "hashWait|1",
+    "key|clear",
+    "hashWait|2"
+  ],
+  "hashes": {
+    "1": {
+      "description": "20 ticks delivered in plausible time, progress bar full",
+      "timeout": 15000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "F0D5D198"
+      ]
+    },
+    "2": {
+      "description": "Program exited to a cleared home screen",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_16_size",
+      "expected_CRCs": [
+        "FFAF89BA",
+        "101734A5",
+        "9DA19F44",
+        "A32840C8",
+        "349F4775"
+      ]
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "transfer_files": [
+    "bin/hw_layout/TTLAYOUT.8xp"
+  ],
+  "target": {
+    "name": "TTLAYOUT",
+    "isASM": true
+  },
+  "delay_after_key": 300,
+  "sequence": [
+    "action|launch",
+    "hashWait|1",
+    "key|window",
+    "hashWait|2",
+    "key|window",
+    "hashWait|1",
+    "key|zoom",
+    "hashWait|3",
+    "key|clear",
+    "hashWait|4"
+  ],
+  "hashes": {
+    "1": {
+      "description": "Initial layout: every size kind, nesting, clipping, wrap",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "AEF53B69"
+      ]
+    },
+    "2": {
+      "description": "30% panel hidden, siblings reflowed",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "924E09E5"
+      ]
+    },
+    "3": {
+      "description": "Weight-2 subtree destroyed, weight-1 takes its space",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "A47A2037"
+      ]
+    },
+    "4": {
+      "description": "Program exited to a cleared home screen",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_16_size",
+      "expected_CRCs": [
+        "FFAF89BA",
+        "101734A5",
+        "9DA19F44",
+        "A32840C8",
+        "349F4775"
+      ]
+    }
+  }
+}

@@ -33,6 +33,7 @@ int main(void) {
 - `examples/demo/` - a mock Wi-Fi manager using every feature (panel tree, focus, list, input, log, progress, ticks, show/hide)
 - `tools/gen_font.py` - converts `tools/petabyt-font/font.h` into `src/titrm_font.c`; also writes `src/titrm_chars.h` and `src/FONT.md` (the code -> glyph -> purpose table)
 - `tests/` - host-side unit tests (see [Testing](#testing))
+- `tests/hw/` - hardware tests run in CEmu's autotester (see [Hardware tests](#hardware-tests))
 - `bin/` - build output (`.8xp` files), populated by `make`
 
 ## Building
@@ -62,11 +63,67 @@ against stand-in CE headers (`tests/stubs/`): drawing lands in an in-memory
 layout, clipping, focus, widgets, key translation and the run loop are all
 exercised through the public API.
 
+### Hardware tests
+
+The unit tests can't catch problems that only show up with the real compiler
+(24-bit `int`), graphx, keypad and clock. For those, `tests/hw/` holds small CE
+programs that run in [CEmu](https://github.com/CE-Programming/CEmu)'s
+`cemu-autotester`. It launches each one, presses keys, and compares CRCs of
+video memory with the expected screens. The tests use nothing else to drive or
+inspect the emulator.
+
+You supply the emulator and a ROM. The ROM isn't included, and CI can't run
+these tests:
+
+- `cemu-autotester` on `PATH` (CEdev ships it in `bin/`) or in `CEMU_AUTOTESTER`
+- `AUTOTESTER_ROM`, a TI-84 Plus CE ROM image with the
+  [CE C libraries](https://github.com/CE-Programming/libraries/releases) (`clibs.8xg`)
+  already installed. Either:
+  - **OS 5.4 or older**, where the autotester starts programs with `Asm(prgmNAME)`, or
+  - **OS 5.5+ jailbroken with [arTIfiCE](https://yvantt.github.io/arTIfiCE/)**,
+    with its `AsmHook2` app installed. `Asm(` is gone on these OS versions, so each
+    test first runs AsmHook2 from the Apps menu (its hook doesn't survive the
+    autotester's boot), then runs the program from the PRGM menu.
+
+  The runner picks the launch method from the ROM: arTIfiCE if AsmHook2 is on
+  it, `Asm(` otherwise. To force one, set `HW_LAUNCH=asm|artifice` or pass
+  `--launch`. The menus are entered by letter (`[alpha][A]` for AsmHook2, then
+  the program's first letter), so other apps and programs on the ROM are fine,
+  unless one starts with the same letter and sorts first.
+
+```sh
+export AUTOTESTER_ROM=/path/to/ti84ce.rom
+make hw-test                          # build and run all of them
+make hw-test HW_ARGS="layout widgets" # or some of them
+make hw-record                        # re-record the expected CRCs of failing screens
+```
+
+| Test | Checks |
+|---|---|
+| `canary` | Only the setup: a graphx program launches and exits. If this one fails, check the ROM and the libraries first |
+| `glyphs` | Every character code, reverse video, box-drawing joins, word wrap |
+| `layout` | Fixed, percent and weighted-fill sizes, 4-deep nesting, clipping, hide/show reflow, destroying a subtree |
+| `widgets` | List, input and log driven by real key presses: wrap-around, `[enter]`, `[vars]` focus, alpha and alpha lock, `[del]`, scrollback |
+| `ticks` | `term_set_tick` with the real `clock()`: 20 ticks of 100 ms arrive at plausible times |
+| `selfcheck` | Assertions that run on the calculator and read pixels back from VRAM: layout math, 24-bit `printf`, clipping, the log ring, focus, pool limits |
+
+Every test ends by pressing `[clear]` and checking that the program returned to a
+cleared home screen.
+
+When a screen doesn't match, the runner saves it as a PNG in
+`tests/hw/build/<test>/`. After an intentional rendering change, run
+`make hw-record`. It rewrites the expected CRCs in each `autotest.json`, but look
+at the PNGs before you commit them. Screens that titrmlib draws (8bpp) have
+exactly one correct CRC, so recording replaces it. Home screen CRCs depend on
+the OS version, so recording adds to that list instead.
+
+### CI
+
 CI (`.github/workflows/ci.yml`) runs on every push and pull request:
 
 - **test** - the unit tests under gcc and clang with AddressSanitizer and UBSan
 - **font** - reruns `tools/gen_font.py` and fails if the generated files in `src/` differ from what's committed
-- **build** - builds every example with CEdev (after the tests pass)
+- **build** - builds every example and hardware test program with CEdev (after the tests pass). The hardware tests themselves need a ROM, so they don't run in CI
 
 ## Using it
 

@@ -69,3 +69,6 @@ __pycache__/
 
 # Host-side unit test build (make -C tests)
 tests/build/
+
+# Hardware test runs (tests/hw/run.py): resolved configs, dumps, PNGs, clibs
+tests/hw/build/
