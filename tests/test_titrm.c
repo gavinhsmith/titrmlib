@@ -1,0 +1,901 @@
+/* Host-side unit tests for titrmlib.
+ *
+ * The library is built with a native compiler against the stand-in CE
+ * headers in tests/stubs/: drawing goes to an in-memory framebuffer and the
+ * keypad plays back a scripted list of scan codes, so layout, clipping,
+ * focus, widgets and the run loop can all be exercised without a calculator
+ * or emulator. titrm.c is included directly so the tests can read the cell
+ * grid it builds each frame.
+ *
+ *     make -C tests
+ */
+
+#include "titrm.c"
+
+#include <graphx.h>
+#include <ti/getcsc.h>
+
+#include <stdio.h>
+#include <string.h>
+
+/* ---- Minimal test harness ------------------------------------------------ */
+
+static int failures;
+static int checks;
+static const char *current;
+
+#define CHECK(cond)                                                              \
+    do {                                                                         \
+        checks++;                                                                \
+        if (!(cond)) {                                                           \
+            failures++;                                                          \
+            fprintf(stderr, "%s:%d: %s: CHECK(%s) failed\n", __FILE__, __LINE__, \
+                    current, #cond);                                             \
+        }                                                                        \
+    } while (0)
+
+#define CHECK_EQ(a, b)                                                           \
+    do {                                                                         \
+        long a_ = (long)(a);                                                     \
+        long b_ = (long)(b);                                                     \
+        checks++;                                                                \
+        if (a_ != b_) {                                                          \
+            failures++;                                                          \
+            fprintf(stderr, "%s:%d: %s: %s == %ld, expected %s == %ld\n",        \
+                    __FILE__, __LINE__, current, #a, a_, #b, b_);                \
+        }                                                                        \
+    } while (0)
+
+#define CHECK_STR(a, b)                                                          \
+    do {                                                                         \
+        const char *a_ = (a);                                                    \
+        const char *b_ = (b);                                                    \
+        checks++;                                                                \
+        if (strcmp(a_, b_) != 0) {                                               \
+            failures++;                                                          \
+            fprintf(stderr, "%s:%d: %s: %s == \"%s\", expected \"%s\"\n",        \
+                    __FILE__, __LINE__, current, #a, a_, b_);                    \
+        }                                                                        \
+    } while (0)
+
+/* ---- Fixtures and helpers ------------------------------------------------ */
+
+static term_ctx_t *setup(void) {
+    if (g_open) {
+        term_shutdown(&g_ctx);
+    }
+    stub_keys(NULL, 0);
+    stub_quit_when_idle = 1;
+    return term_init();
+}
+
+/* Builds and flushes one frame, as term_run() does after each event. */
+static void draw(term_ctx_t *ctx) {
+    frame(ctx);
+}
+
+static uint8_t ch_at(int col, int row) { return grid[row][col].ch; }
+static uint8_t attr_at(int col, int row) { return grid[row][col].attr; }
+
+/* `len` cells of a grid row as a string; empty cells read as spaces. */
+static const char *text_at(int col, int row, int len) {
+    static char buf[TERM_COLS + 1];
+    int i;
+    for (i = 0; i < len && col + i < TERM_COLS; i++) {
+        uint8_t ch = grid[row][col + i].ch;
+        buf[i] = ch ? (char)ch : ' ';
+    }
+    buf[i] = '\0';
+    return buf;
+}
+
+static bool row_blank(int row, int from, int to) {
+    for (int c = from; c < to; c++) {
+        if (grid[row][c].ch) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* Records every event term_run() hands the app; [clear] quits with 42. */
+#define MAX_EVENTS 64
+static term_event_t events[MAX_EVENTS];
+static int n_events;
+
+static void record(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+    (void)state;
+    if (n_events < MAX_EVENTS) {
+        events[n_events++] = *ev;
+    }
+    if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR) {
+        term_quit(ctx, 42);
+    }
+}
+
+static int run_keys(term_ctx_t *ctx, const uint8_t *keys, int n) {
+    n_events = 0;
+    stub_keys(keys, n);
+    return term_run(ctx, record, NULL);
+}
+
+static int count_events(term_event_type_t type) {
+    int n = 0;
+    for (int i = 0; i < n_events; i++) {
+        n += events[i].type == type;
+    }
+    return n;
+}
+
+static const term_event_t *last_event(term_event_type_t type) {
+    for (int i = n_events - 1; i >= 0; i--) {
+        if (events[i].type == type) {
+            return &events[i];
+        }
+    }
+    return NULL;
+}
+
+/* ---- Grid and font ------------------------------------------------------- */
+
+static void test_grid_size(void) {
+    setup();
+    CHECK_EQ(term_cols(), 53);
+    CHECK_EQ(term_rows(), 30);
+    CHECK(TERM_COLS * TERM_CELL_W <= TERM_SCREEN_W);
+    CHECK(TERM_ROWS * TERM_CELL_H <= TERM_SCREEN_H);
+}
+
+static bool glyph_empty(uint8_t code) {
+    for (int r = 0; r < TERM_GLYPH_H; r++) {
+        if (term_font[code].rows[r]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void test_font_table(void) {
+    for (int code = 0; code < 256; code++) {
+        for (int r = 0; r < TERM_GLYPH_H; r++) {
+            CHECK((term_font[code].rows[r] & ~0x1F) == 0); /* 5 pixels per row */
+        }
+    }
+    CHECK(glyph_empty(' '));
+    for (int code = 0x21; code <= 0x7E; code++) {
+        if (glyph_empty((uint8_t)code)) {
+            fprintf(stderr, "  printable 0x%02X '%c' has no glyph\n", code, code);
+        }
+        CHECK(!glyph_empty((uint8_t)code));
+    }
+    static const uint8_t named[] = {
+        TERM_CH_HLINE, TERM_CH_VLINE, TERM_CH_TL, TERM_CH_TR, TERM_CH_BL,
+        TERM_CH_BR, TERM_CH_LTEE, TERM_CH_RTEE, TERM_CH_TTEE, TERM_CH_BTEE,
+        TERM_CH_CROSS, TERM_CH_CHECK, TERM_CH_CROSSMARK, TERM_CH_DOT,
+        TERM_CH_DOT_EMPTY, TERM_CH_ARROW_R, TERM_CH_ARROW_D, TERM_CH_ARROW_U,
+        TERM_CH_SIG1, TERM_CH_SIG2, TERM_CH_SIG3, TERM_CH_SHADE,
+        TERM_CH_SMILE, TERM_CH_BLOCK,
+    };
+    for (unsigned i = 0; i < sizeof named; i++) {
+        CHECK(!glyph_empty(named[i]));
+    }
+}
+
+/* ---- Layout -------------------------------------------------------------- */
+
+static void test_layout_fixed_and_fill(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *root = term_root(ctx);
+    term_panel_t *head = term_split(root, TERM_VERTICAL, TERM_FIXED(1));
+    term_panel_t *body = term_split(root, TERM_VERTICAL, TERM_FILL);
+    term_panel_t *foot = term_split(root, TERM_VERTICAL, TERM_FIXED(2));
+    draw(ctx);
+
+    CHECK_EQ(head->y, 0);
+    CHECK_EQ(head->h, 1);
+    CHECK_EQ(body->y, 1);
+    CHECK_EQ(body->h, 27);
+    CHECK_EQ(foot->y, 28);
+    CHECK_EQ(foot->h, 2);
+    CHECK_EQ(term_panel_width(body), TERM_COLS);
+}
+
+static void test_layout_percent(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *left = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_PERCENT(30));
+    term_panel_t *right = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FILL);
+    draw(ctx);
+
+    CHECK_EQ(left->x, 0);
+    CHECK_EQ(left->w, TERM_COLS * 30 / 100);
+    CHECK_EQ(right->x, left->w);
+    CHECK_EQ(left->w + right->w, TERM_COLS);
+    CHECK_EQ(right->h, TERM_ROWS);
+}
+
+static void test_layout_fill_weights(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *a = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FILL_WEIGHT(1));
+    term_panel_t *b = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FILL_WEIGHT(2));
+    draw(ctx);
+
+    CHECK_EQ(a->w, TERM_COLS / 3);          /* 17 */
+    CHECK_EQ(b->w, TERM_COLS - TERM_COLS / 3); /* remainder lands on the last */
+}
+
+static void test_layout_overflow_clipped(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *a = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(20));
+    term_panel_t *b = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(20));
+    term_panel_t *c = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    draw(ctx);
+
+    CHECK_EQ(a->h, 20);
+    CHECK_EQ(b->h, TERM_ROWS - 20);
+    CHECK_EQ(c->h, 0);
+}
+
+static void test_layout_border_and_nesting(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *outer = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_panel_set_border(outer, true);
+    term_panel_t *inner = term_split(outer, TERM_HORIZONTAL, TERM_FIXED(10));
+    term_panel_set_border(inner, true);
+    draw(ctx);
+
+    CHECK_EQ(term_panel_width(outer), TERM_COLS - 2);
+    CHECK_EQ(term_panel_height(outer), TERM_ROWS - 2);
+    CHECK_EQ(inner->x, 1);
+    CHECK_EQ(inner->y, 1);
+    CHECK_EQ(term_panel_width(inner), 8);
+    CHECK_EQ(term_panel_height(inner), TERM_ROWS - 4);
+}
+
+static void test_layout_hide_show(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *a = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(5));
+    term_panel_t *b = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    draw(ctx);
+    CHECK_EQ(b->y, 5);
+
+    term_panel_show(a, false);
+    CHECK(!term_panel_visible(a));
+    draw(ctx);
+    CHECK_EQ(b->y, 0);
+    CHECK_EQ(b->h, TERM_ROWS);
+
+    term_panel_show(a, true);
+    draw(ctx);
+    CHECK_EQ(b->y, 5);
+    CHECK_EQ(b->h, TERM_ROWS - 5);
+}
+
+static void test_split_rules(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *root = term_root(ctx);
+    CHECK(term_split(root, TERM_VERTICAL, TERM_FILL) != NULL);
+    CHECK(term_split(root, TERM_HORIZONTAL, TERM_FILL) == NULL); /* direction is fixed */
+    CHECK(term_split(NULL, TERM_VERTICAL, TERM_FILL) == NULL);
+
+    term_panel_t *list = term_split(root, TERM_VERTICAL, TERM_FILL);
+    term_make_list(list, NULL, 0);
+    CHECK(term_split(list, TERM_VERTICAL, TERM_FILL) == NULL); /* widgets are leaves */
+
+    /* Root + the two above leaves TERM_MAX_PANELS - 3 free slots. */
+    int made = 0;
+    while (term_split(root, TERM_VERTICAL, TERM_FIXED(0))) {
+        made++;
+    }
+    CHECK_EQ(made, TERM_MAX_PANELS - 3);
+}
+
+static void test_destroy_frees_subtree(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *root = term_root(ctx);
+    term_panel_t *a = term_split(root, TERM_VERTICAL, TERM_FIXED(3));
+    term_panel_t *b = term_split(root, TERM_VERTICAL, TERM_FIXED(4));
+    term_panel_t *c = term_split(root, TERM_VERTICAL, TERM_FILL);
+    term_split(b, TERM_HORIZONTAL, TERM_FILL);
+    term_make_log(term_split(b, TERM_HORIZONTAL, TERM_FILL), 8);
+
+    int used = 0;
+    for (int i = 0; i < TERM_MAX_PANELS; i++) {
+        used += ctx->panels[i].in_use;
+    }
+    CHECK_EQ(used, 6);
+
+    term_panel_destroy(b);
+    used = 0;
+    for (int i = 0; i < TERM_MAX_PANELS; i++) {
+        used += ctx->panels[i].in_use;
+    }
+    CHECK_EQ(used, 3);
+    CHECK(a->next == c);
+
+    draw(ctx);
+    CHECK_EQ(c->y, 3);
+
+    term_panel_destroy(c); /* the last child */
+    CHECK(root->last_child == a);
+    term_panel_destroy(root); /* ignored */
+    CHECK(root->in_use);
+}
+
+/* ---- Panel-scoped output and clipping ------------------------------------ */
+
+static void draw_long_line(term_ctx_t *ctx, term_panel_t *p, void *user) {
+    (void)ctx;
+    (void)user;
+    term_panel_print(p, "0123456789ABCDEFGHIJ");
+    term_panel_move(p, -5, 1);
+    term_panel_print(p, "x\ny");
+    for (int i = 0; i < 50; i++) {
+        term_panel_putc(p, '\n');
+    }
+    term_panel_print(p, "off the bottom");
+}
+
+static void test_print_is_clipped(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *left = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(12));
+    term_panel_t *right = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FILL);
+    term_panel_set_border(left, true);
+    term_panel_set_draw(left, draw_long_line, NULL);
+    (void)right;
+    draw(ctx);
+
+    CHECK_STR(text_at(1, 1, 10), "0123456789");
+    CHECK_EQ(ch_at(11, 1), TERM_CH_VLINE); /* the border survives */
+    CHECK(row_blank(1, 12, TERM_COLS));    /* nothing leaks into the sibling */
+    CHECK_EQ(ch_at(1, 2), 'x');            /* negative move clamps to 0 */
+    CHECK_EQ(ch_at(1, 3), 'y');
+    CHECK_EQ(ch_at(0, TERM_ROWS - 1), TERM_CH_BL);
+    CHECK(row_blank(TERM_ROWS - 1, 1, 11) == false); /* bottom border intact */
+}
+
+static void draw_wrapped(term_ctx_t *ctx, term_panel_t *p, void *user) {
+    (void)ctx;
+    (void)user;
+    term_panel_wrap(p, true);
+    term_panel_set_attr(p, TERM_ATTR_REVERSE);
+    term_panel_printf(p, "%s-%d", "abcdef", 42);
+}
+
+static void test_print_wrap_and_attr(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(4));
+    term_panel_set_draw(p, draw_wrapped, NULL);
+    draw(ctx);
+
+    CHECK_STR(text_at(0, 0, 4), "abcd");
+    CHECK_STR(text_at(0, 1, 4), "ef-4");
+    CHECK_STR(text_at(0, 2, 4), "2   ");
+    CHECK_EQ(attr_at(0, 0), TERM_ATTR_REVERSE);
+    CHECK(row_blank(0, 4, TERM_COLS));
+}
+
+static void test_border_and_title(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(5));
+    term_panel_set_border(p, true);
+    term_panel_set_title(p, "Title");
+    draw(ctx);
+
+    CHECK_EQ(ch_at(0, 0), TERM_CH_TL);
+    CHECK_EQ(ch_at(TERM_COLS - 1, 0), TERM_CH_TR);
+    CHECK_EQ(ch_at(0, 4), TERM_CH_BL);
+    CHECK_EQ(ch_at(TERM_COLS - 1, 4), TERM_CH_BR);
+    CHECK_EQ(ch_at(1, 0), ' ');
+    CHECK_STR(text_at(2, 0, 6), "Title ");
+    CHECK_EQ(ch_at(8, 0), TERM_CH_HLINE);
+    CHECK_EQ(attr_at(2, 0), TERM_ATTR_NORMAL);
+
+    term_focus(ctx, p);
+    draw(ctx);
+    CHECK_EQ(attr_at(2, 0), TERM_ATTR_REVERSE);
+}
+
+/* ---- Pixels -------------------------------------------------------------- */
+
+static void draw_glyphs(term_ctx_t *ctx, term_panel_t *p, void *user) {
+    (void)ctx;
+    (void)user;
+    term_panel_print(p, "A");
+    term_panel_set_attr(p, TERM_ATTR_REVERSE);
+    term_panel_putc(p, ' ');
+}
+
+static void test_glyph_blit(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_set_draw(term_root(ctx), draw_glyphs, NULL);
+    draw(ctx);
+
+    /* 'A' at cell 0,0: glyph bit 4 is the leftmost pixel; column 5 and row 7
+     * are the gaps. */
+    for (int r = 0; r < TERM_CELL_H; r++) {
+        for (int x = 0; x < TERM_CELL_W; x++) {
+            bool on = r < TERM_GLYPH_H && x < TERM_GLYPH_W &&
+                      (term_font['A'].rows[r] >> (TERM_GLYPH_W - 1 - x)) & 1;
+            CHECK_EQ(stub_fb[ORIGIN_Y + r][ORIGIN_X + x], on ? TERM_FG : TERM_BG);
+        }
+    }
+    /* A reversed space is a solid foreground cell. */
+    for (int r = 0; r < TERM_CELL_H; r++) {
+        for (int x = 0; x < TERM_CELL_W; x++) {
+            CHECK_EQ(stub_fb[ORIGIN_Y + r][ORIGIN_X + TERM_CELL_W + x], TERM_FG);
+        }
+    }
+}
+
+static void test_flush_only_redraws_changes(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_set_draw(term_root(ctx), draw_glyphs, NULL);
+    draw(ctx);
+
+    /* Scribble on an unchanged cell: a redraw must leave it alone. */
+    int px = ORIGIN_X + 10 * TERM_CELL_W;
+    int py = ORIGIN_Y + 10 * TERM_CELL_H;
+    stub_fb[py][px] = 0x55;
+    draw(ctx);
+    CHECK_EQ(stub_fb[py][px], 0x55);
+
+    /* A cell whose content changes is repainted. */
+    stub_fb[ORIGIN_Y][ORIGIN_X + 4] = 0x55;
+    term_panel_set_draw(term_root(ctx), NULL, NULL);
+    draw(ctx);
+    CHECK_EQ(stub_fb[ORIGIN_Y][ORIGIN_X + 4], TERM_BG);
+}
+
+static void test_connected_glyphs_bridge_gaps(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_set_border(term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(3)), true);
+    draw(ctx);
+
+    /* The horizontal line through a HLINE cell runs across the gap column. */
+    int row = -1;
+    for (int r = 0; r < TERM_GLYPH_H; r++) {
+        if (term_font[TERM_CH_HLINE].rows[r] == 0x1F) {
+            row = r;
+        }
+    }
+    CHECK(row >= 0);
+    if (row >= 0) {
+        for (int x = 0; x < TERM_CELL_W; x++) {
+            CHECK_EQ(stub_fb[ORIGIN_Y + row][ORIGIN_X + TERM_CELL_W + x], TERM_FG);
+        }
+    }
+}
+
+/* ---- Focus --------------------------------------------------------------- */
+
+static void test_focus_order(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *root = term_root(ctx);
+    term_panel_t *left = term_split(root, TERM_HORIZONTAL, TERM_FILL);
+    term_panel_t *right = term_split(root, TERM_HORIZONTAL, TERM_FILL);
+    term_panel_t *a = term_split(left, TERM_VERTICAL, TERM_FILL);
+    term_panel_t *b = term_split(left, TERM_VERTICAL, TERM_FILL);
+    term_panel_t *text = term_split(right, TERM_VERTICAL, TERM_FILL);
+    term_panel_t *c = term_split(right, TERM_VERTICAL, TERM_FILL);
+    term_make_list(a, NULL, 0);
+    term_make_input(b);
+    term_make_text(text, "not focusable");
+    term_make_log(c, 4);
+
+    CHECK(term_focused(ctx) == NULL);
+    term_focus_next(ctx);
+    CHECK(term_focused(ctx) == a);
+    term_focus_next(ctx);
+    CHECK(term_focused(ctx) == b);
+    term_focus_next(ctx);
+    CHECK(term_focused(ctx) == c); /* skips the text panel */
+    term_focus_next(ctx);
+    CHECK(term_focused(ctx) == a); /* wraps */
+
+    term_panel_show(left, false); /* hiding an ancestor hides the subtree */
+    term_focus_next(ctx);
+    CHECK(term_focused(ctx) == c);
+
+    term_panel_set_focusable(text, true);
+    term_focus_next(ctx);
+    CHECK(term_focused(ctx) == text);
+}
+
+static void test_focus_lost_is_reassigned(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *a = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_panel_t *b = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_make_input(a);
+    term_make_input(b);
+
+    term_focus(ctx, a);
+    term_panel_show(a, false);
+    draw(ctx);
+    CHECK(term_focused(ctx) == b);
+
+    term_panel_show(a, true);
+    term_panel_destroy(b);
+    draw(ctx);
+    CHECK(term_focused(ctx) == a);
+
+    term_focus(ctx, NULL); /* explicit "no focus" is respected */
+    draw(ctx);
+    CHECK(term_focused(ctx) == NULL);
+}
+
+/* ---- Run loop and keypad ------------------------------------------------- */
+
+static void test_run_start_and_quit(void) {
+    term_ctx_t *ctx = setup();
+    static const uint8_t keys[] = {sk_Mode, sk_Clear, sk_Enter};
+    CHECK_EQ(run_keys(ctx, keys, 3), 42);
+
+    CHECK_EQ(n_events, 3);
+    CHECK_EQ(events[0].type, TERM_EV_START);
+    CHECK_EQ(events[1].type, TERM_EV_KEY);
+    CHECK_EQ(events[1].key, TERM_KEY_MODE);
+    CHECK_EQ(events[2].key, TERM_KEY_CLEAR);
+    CHECK(ctx->update == NULL);
+
+    /* With no quit, the stub ends the run when the script runs out. */
+    CHECK_EQ(run_keys(ctx, NULL, 0), STUB_IDLE_RESULT);
+}
+
+static void test_key_translation(void) {
+    term_ctx_t *ctx = setup();
+    static const uint8_t keys[] = {
+        sk_Up, sk_Down, sk_Left, sk_Right, sk_Del, sk_2nd,
+        sk_Yequ, sk_Window, sk_Zoom, sk_Trace, sk_Graph,
+        sk_7, sk_DecPnt, sk_Chs, sk_Power,
+        sk_Math,           /* types nothing without alpha: swallowed */
+        sk_Alpha, sk_Math, /* one-shot alpha -> 'A' */
+        sk_Math,           /* alpha has worn off */
+        sk_2nd, sk_Alpha,  /* alpha lock */
+        sk_Apps, sk_0,     /* 'B', ' ' */
+        sk_Alpha,          /* unlock */
+        sk_0,
+    };
+    run_keys(ctx, keys, (int)sizeof keys);
+
+    static const term_key_t want_keys[] = {
+        TERM_KEY_UP, TERM_KEY_DOWN, TERM_KEY_LEFT, TERM_KEY_RIGHT, TERM_KEY_DEL,
+        TERM_KEY_2ND, TERM_KEY_F1, TERM_KEY_F2, TERM_KEY_F3, TERM_KEY_F4, TERM_KEY_F5,
+    };
+    int n = (int)(sizeof want_keys / sizeof want_keys[0]);
+    for (int i = 0; i < n; i++) {
+        CHECK_EQ(events[1 + i].key, want_keys[i]);
+    }
+
+    const char want_chars[] = "7.-^A" "\x02" "B 0"; /* \x02 = the [2nd] key event */
+    int e = 1 + n;
+    for (int i = 0; want_chars[i]; i++, e++) {
+        if (want_chars[i] == '\x02') {
+            CHECK_EQ(events[e].key, TERM_KEY_2ND);
+        } else {
+            CHECK_EQ(events[e].key, TERM_KEY_CHAR);
+            CHECK_EQ(events[e].ch, want_chars[i]);
+        }
+    }
+    CHECK_EQ(n_events, e);
+    CHECK_EQ(term_alpha_mode(ctx), 0);
+}
+
+static void test_alpha_mode_state(void) {
+    term_ctx_t *ctx = setup();
+    static const uint8_t arm[] = {sk_Alpha};
+    run_keys(ctx, arm, 1);
+    CHECK_EQ(term_alpha_mode(ctx), 1);
+    static const uint8_t lock[] = {sk_2nd, sk_Alpha};
+    run_keys(ctx, lock, 2);
+    CHECK_EQ(term_alpha_mode(ctx), 2);
+    static const uint8_t typed[] = {sk_Math, sk_Math};
+    run_keys(ctx, typed, 2);
+    CHECK_EQ(term_alpha_mode(ctx), 2); /* lock survives typing */
+}
+
+static void test_tab_cycles_focus(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *a = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_panel_t *b = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_make_input(a);
+    term_make_input(b);
+
+    static const uint8_t keys[] = {sk_1, sk_Vars, sk_2, sk_Vars, sk_Vars, sk_3};
+    run_keys(ctx, keys, (int)sizeof keys);
+    CHECK_STR(term_input_text(a), "1");
+    CHECK_STR(term_input_text(b), "23");
+    CHECK_EQ(count_events(TERM_EV_KEY), 0); /* inputs and [vars] consume everything */
+}
+
+static void quit_after_ticks(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+    int *ticks = state;
+    if (ev->type == TERM_EV_TICK && ++*ticks == 3) {
+        term_quit(ctx, 7);
+    }
+}
+
+static void test_tick(void) {
+    term_ctx_t *ctx = setup();
+    stub_quit_when_idle = 0; /* only the ticks can end this run */
+    term_set_tick(ctx, 1);
+
+    int ticks = 0;
+    CHECK_EQ(term_run(ctx, quit_after_ticks, &ticks), 7);
+    CHECK_EQ(ticks, 3);
+
+    term_set_tick(ctx, 0);
+    CHECK_EQ(ctx->tick, 0);
+}
+
+/* ---- Widgets ------------------------------------------------------------- */
+
+static void test_text_wraps_words(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(10));
+    term_make_text(p, "the quick brown fox\n  indented supercalifragilistic");
+    draw(ctx);
+
+    CHECK_STR(text_at(0, 0, 10), "the quick ");
+    CHECK_STR(text_at(0, 1, 10), "brown fox ");
+    CHECK_STR(text_at(0, 2, 10), "  indented");
+    CHECK_STR(text_at(0, 3, 10), "supercalif"); /* over-long words are split */
+    CHECK_STR(text_at(0, 4, 10), "ragilistic");
+    CHECK(row_blank(5, 0, 10));
+    CHECK(term_focused(ctx) == NULL); /* text is not focusable */
+
+    term_text_set(p, "new");
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 10), "new       ");
+}
+
+static const char *const items[] = {"zero", "one", "two", "three", "four", "five"};
+
+static void test_list_navigation_and_select(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_make_list(p, items, 6);
+    CHECK_EQ(term_list_selected(p), 0);
+
+    static const uint8_t keys[] = {sk_Up, sk_Enter, sk_Down, sk_Down, sk_Enter};
+    run_keys(ctx, keys, (int)sizeof keys);
+    CHECK_EQ(count_events(TERM_EV_SELECT), 2);
+    CHECK_EQ(events[1].value, 5); /* up from the top wraps to the bottom */
+    CHECK(last_event(TERM_EV_SELECT)->panel == p);
+    CHECK_EQ(last_event(TERM_EV_SELECT)->value, 1);
+
+    draw(ctx);
+    CHECK_EQ(ch_at(0, 1), TERM_CH_ARROW_R);
+    CHECK_STR(text_at(1, 1, 3), "one");
+    CHECK_EQ(attr_at(10, 1), TERM_ATTR_REVERSE); /* focused selection bar */
+    CHECK_EQ(attr_at(10, 0), TERM_ATTR_NORMAL);
+
+    term_list_select(p, 99);
+    CHECK_EQ(term_list_selected(p), 5);
+    term_list_select(p, -1);
+    CHECK_EQ(term_list_selected(p), 0);
+
+    term_list_select(p, 5);
+    term_list_set_items(p, items, 2);
+    CHECK_EQ(term_list_selected(p), 1);
+    term_list_set_items(p, items, 0);
+    CHECK_EQ(term_list_selected(p), -1);
+}
+
+static void test_list_scrolls_with_scrollbar(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(3));
+    term_make_list(p, items, 6);
+    term_focus(ctx, p);
+    term_list_select(p, 4);
+    draw(ctx);
+
+    CHECK_STR(text_at(1, 0, 5), "two  ");
+    CHECK_STR(text_at(1, 2, 5), "four ");
+    CHECK_EQ(ch_at(TERM_COLS - 1, 0), TERM_CH_SHADE);
+    CHECK_EQ(ch_at(TERM_COLS - 1, 1), TERM_CH_BLOCK); /* thumb: 4 * 2 / 5 = 1 */
+    CHECK_EQ(ch_at(TERM_COLS - 1, 2), TERM_CH_SHADE);
+    CHECK(row_blank(3, 0, TERM_COLS));
+}
+
+static void test_input_editing(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(1));
+    term_make_input(p);
+
+    static const uint8_t keys[] = {
+        sk_1, sk_2, sk_Left, sk_3,  /* "132" */
+        sk_Right, sk_Right, sk_4,   /* right stops at the end: "1324" */
+        sk_Del,                     /* "132" */
+        sk_Left, sk_Left, sk_Left, sk_Left, sk_Del, /* at the start: no-op */
+        sk_Enter,
+    };
+    run_keys(ctx, keys, (int)sizeof keys);
+    CHECK_STR(term_input_text(p), "132");
+    CHECK_EQ(count_events(TERM_EV_SUBMIT), 1);
+    CHECK(last_event(TERM_EV_SUBMIT)->panel == p);
+
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 4), "132 ");
+    CHECK_EQ(attr_at(0, 0), TERM_ATTR_REVERSE); /* cursor at the start */
+
+    /* [clear] empties the field; a second [clear] reaches the app. */
+    static const uint8_t clear1[] = {sk_Clear};
+    CHECK_EQ(run_keys(ctx, clear1, 1), STUB_IDLE_RESULT);
+    CHECK_STR(term_input_text(p), "");
+    CHECK_EQ(run_keys(ctx, clear1, 1), 42);
+
+    term_input_set(p, "abc");
+    CHECK_STR(term_input_text(p), "abc");
+    CHECK_STR(term_input_text(term_root(ctx)), ""); /* not an input */
+}
+
+static void test_input_limit_and_scroll(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(5));
+    term_make_input(p);
+
+    char longer[TERM_INPUT_MAX + 11];
+    memset(longer, 'x', sizeof longer - 1);
+    longer[sizeof longer - 1] = '\0';
+    term_input_set(p, longer);
+    CHECK_EQ((long)strlen(term_input_text(p)), TERM_INPUT_MAX);
+
+    static const uint8_t more[] = {sk_1};
+    run_keys(ctx, more, 1);
+    CHECK_EQ((long)strlen(term_input_text(p)), TERM_INPUT_MAX); /* full: ignored */
+
+    term_make_input(p); /* fresh field: see the note on horizontal scroll below */
+    static const uint8_t typed[] = {sk_1, sk_2, sk_3, sk_4, sk_5, sk_6, sk_7};
+    run_keys(ctx, typed, (int)sizeof typed);
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 5), "4567 "); /* scrolled so the cursor (at 7) shows */
+    CHECK_EQ(attr_at(4, 0), TERM_ATTR_REVERSE);
+    CHECK(row_blank(0, 5, TERM_COLS));
+
+    static const uint8_t home[] = {sk_Left, sk_Left, sk_Left, sk_Left, sk_Left, sk_Left, sk_Left};
+    run_keys(ctx, home, (int)sizeof home);
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 5), "12345");
+    CHECK_EQ(attr_at(0, 0), TERM_ATTR_REVERSE);
+
+    /* Known gap: term_input_set() keeps the old horizontal scroll, so setting
+     * a short value after a long one scrolls it out of view. Not asserted
+     * until the library resets scroll there. */
+}
+
+static void test_log_ring_and_scrollback(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(3));
+    term_make_log(p, 5);
+    for (int i = 0; i < 7; i++) {
+        term_log_printf(p, "line %d", i);
+    }
+    CHECK_EQ(p->u.log.count, 5); /* 0 and 1 fell off the ring */
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 6), "line 4");
+    CHECK_STR(text_at(0, 2, 6), "line 6");
+    CHECK_EQ(ch_at(TERM_COLS - 1, 0), TERM_CH_ARROW_U);
+    CHECK(ch_at(TERM_COLS - 1, 2) != TERM_CH_ARROW_D);
+
+    static const uint8_t up[] = {sk_Up, sk_Up, sk_Up, sk_Up};
+    run_keys(ctx, up, 4);
+    CHECK_EQ(p->u.log.back, 2); /* can't scroll past the oldest line */
+    CHECK_STR(text_at(0, 0, 6), "line 2");
+    CHECK_EQ(ch_at(TERM_COLS - 1, 2), TERM_CH_ARROW_D);
+
+    term_log_print(p, "new"); /* scrolled back: the view holds still... */
+    draw(ctx);
+    CHECK(row_blank(0, 0, TERM_COLS - 1)); /* ...less line 2, which fell off the ring */
+    CHECK_STR(text_at(0, 1, 6), "line 3");
+    CHECK_STR(text_at(0, 2, 6), "line 4");
+
+    term_log_clear(p);
+    draw(ctx);
+    CHECK(row_blank(0, 0, TERM_COLS));
+}
+
+static void test_log_splits_lines(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_make_log(p, 10);
+
+    char wide[TERM_LOG_LINE + 5];
+    memset(wide, 'w', sizeof wide - 1);
+    wide[sizeof wide - 1] = '\0';
+    term_log_print(p, "a\nb\n");
+    term_log_print(p, wide);
+    CHECK_EQ(p->u.log.count, 4); /* "a", "b", a full line, the rest */
+
+    draw(ctx);
+    CHECK_STR(text_at(0, TERM_ROWS - 4, 1), "a");
+    CHECK_STR(text_at(0, TERM_ROWS - 1, 6), "wwwww ");
+}
+
+static void test_progress(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(10));
+    term_make_progress(p, 4);
+
+    term_progress_set(p, 1);
+    draw(ctx);
+    CHECK_EQ(ch_at(0, 0), TERM_CH_BLOCK);
+    CHECK_EQ(ch_at(1, 0), TERM_CH_BLOCK);
+    CHECK_EQ(ch_at(2, 0), TERM_CH_SHADE); /* 1/4 of 10 = 2 cells */
+
+    term_progress_set(p, 99);
+    draw(ctx);
+    CHECK_EQ(ch_at(9, 0), TERM_CH_BLOCK);
+    term_progress_set(p, -1);
+    draw(ctx);
+    CHECK_EQ(ch_at(0, 0), TERM_CH_SHADE);
+}
+
+/* ---- Lifecycle ----------------------------------------------------------- */
+
+static void test_init_and_shutdown(void) {
+    term_ctx_t *ctx = setup();
+    CHECK(stub_gfx_open);
+    CHECK(term_init() == ctx); /* a second init returns the live context */
+    CHECK(term_root(ctx) != NULL);
+    CHECK_EQ(term_root(ctx)->w, 0); /* laid out lazily */
+    term_shutdown(ctx);
+    CHECK(!stub_gfx_open);
+    term_shutdown(ctx); /* harmless twice */
+}
+
+/* ---- Runner -------------------------------------------------------------- */
+
+#define TEST(fn) {#fn, fn}
+
+static const struct {
+    const char *name;
+    void (*fn)(void);
+} tests[] = {
+    TEST(test_grid_size),
+    TEST(test_font_table),
+    TEST(test_layout_fixed_and_fill),
+    TEST(test_layout_percent),
+    TEST(test_layout_fill_weights),
+    TEST(test_layout_overflow_clipped),
+    TEST(test_layout_border_and_nesting),
+    TEST(test_layout_hide_show),
+    TEST(test_split_rules),
+    TEST(test_destroy_frees_subtree),
+    TEST(test_print_is_clipped),
+    TEST(test_print_wrap_and_attr),
+    TEST(test_border_and_title),
+    TEST(test_glyph_blit),
+    TEST(test_flush_only_redraws_changes),
+    TEST(test_connected_glyphs_bridge_gaps),
+    TEST(test_focus_order),
+    TEST(test_focus_lost_is_reassigned),
+    TEST(test_run_start_and_quit),
+    TEST(test_key_translation),
+    TEST(test_alpha_mode_state),
+    TEST(test_tab_cycles_focus),
+    TEST(test_tick),
+    TEST(test_text_wraps_words),
+    TEST(test_list_navigation_and_select),
+    TEST(test_list_scrolls_with_scrollbar),
+    TEST(test_input_editing),
+    TEST(test_input_limit_and_scroll),
+    TEST(test_log_ring_and_scrollback),
+    TEST(test_log_splits_lines),
+    TEST(test_progress),
+    TEST(test_init_and_shutdown),
+};
+
+int main(void) {
+    int n = (int)(sizeof tests / sizeof tests[0]);
+    for (int i = 0; i < n; i++) {
+        int before = failures;
+        current = tests[i].name;
+        tests[i].fn();
+        printf("%s %s\n", failures == before ? "ok  " : "FAIL", current);
+    }
+    if (g_open) {
+        term_shutdown(&g_ctx);
+    }
+    printf("\n%d tests, %d checks, %d failed\n", n, checks, failures);
+    return failures ? 1 : 0;
+}

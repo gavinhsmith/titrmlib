@@ -66,3 +66,6 @@ bin/*
 # Python bytecode (from running tools/gen_font.py)
 __pycache__/
 *.py[cod]
+
+# Host-side unit test build (make -C tests)
+tests/build/

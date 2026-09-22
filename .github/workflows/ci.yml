@@ -5,7 +5,44 @@ on:
   pull_request:
 
 jobs:
+  test:
+    name: Host unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run tests (gcc, ASan + UBSan)
+        run: make -C tests CC=gcc
+
+      - name: Run tests (clang, ASan + UBSan)
+        run: make -C tests clean test CC=clang
+
+  font:
+    name: Generated font is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Regenerate font files
+        run: python tools/gen_font.py
+
+      - name: Check for drift
+        run: |
+          if ! git diff --exit-code -- src/; then
+            echo "::error::src/ differs from tools/gen_font.py output. Run 'python tools/gen_font.py' and commit the result."
+            exit 1
+          fi
+
   build:
+    name: Build examples (CEdev)
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

@@ -32,6 +32,7 @@ int main(void) {
 - `examples/hello/` - the smallest useful program
 - `examples/demo/` - a mock Wi-Fi manager using every feature (panel tree, focus, list, input, log, progress, ticks, show/hide)
 - `tools/gen_font.py` - converts `tools/petabyt-font/font.h` into `src/titrm_font.c`; also writes `src/titrm_chars.h` and `src/FONT.md` (the code -> glyph -> purpose table)
+- `tests/` - host-side unit tests (see [Testing](#testing))
 - `bin/` - build output (`.8xp` files), populated by `make`
 
 ## Building
@@ -47,6 +48,25 @@ make clean  # remove build artifacts
 The library sources are compiled straight into each example (`project.mk`). The
 project sits at the repo root on purpose: CEdev can't build sources reached
 through `..` on Windows.
+
+## Testing
+
+```sh
+make -C tests            # build and run the unit tests with the host C compiler
+make -C tests CC=clang   # any C99 compiler; SANITIZE= disables ASan/UBSan
+```
+
+The tests don't need CEdev or a calculator. They compile the library natively
+against stand-in CE headers (`tests/stubs/`): drawing lands in an in-memory
+320x240 framebuffer and the keypad replays a scripted list of scan codes, so
+layout, clipping, focus, widgets, key translation and the run loop are all
+exercised through the public API.
+
+CI (`.github/workflows/ci.yml`) runs on every push and pull request:
+
+- **test** - the unit tests under gcc and clang with AddressSanitizer and UBSan
+- **font** - reruns `tools/gen_font.py` and fails if the generated files in `src/` differ from what's committed
+- **build** - builds every example with CEdev (after the tests pass)
 
 ## Using it
 
