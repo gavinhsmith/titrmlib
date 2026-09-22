@@ -62,3 +62,7 @@ bin/*
 *.8xv
 *.8ek
 *.8xg
+
+# Python bytecode (from running tools/gen_font.py)
+__pycache__/
+*.py[cod]

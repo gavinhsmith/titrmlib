@@ -1,17 +1,18 @@
-# Fans `make` out to every test project under test/, each of which is an
-# independent CE C Toolchain program that builds against the library
-# sources in src/. See test/*/makefile for the actual build rules.
+# Builds every example under examples/. Each one is an independent CE C
+# Toolchain program compiled together with the library sources in src/; see
+# project.mk for the actual build rules, and `make demo` / `make hello` to
+# build just one.
 
-TESTS := $(patsubst %/makefile,%,$(wildcard test/*/makefile))
+EXAMPLES := demo hello
 
-.PHONY: all clean $(TESTS) $(addsuffix .clean,$(TESTS))
+.PHONY: all clean $(EXAMPLES) $(addsuffix .clean,$(EXAMPLES))
 
-all: $(TESTS)
+all: $(EXAMPLES)
 
-$(TESTS):
-	$(MAKE) -C $@
+$(EXAMPLES):
+	$(MAKE) -f project.mk EXAMPLE=$@
 
-clean: $(addsuffix .clean,$(TESTS))
+clean: $(addsuffix .clean,$(EXAMPLES))
 
 %.clean:
-	$(MAKE) -C $* clean
+	$(MAKE) -f project.mk EXAMPLE=$* clean
