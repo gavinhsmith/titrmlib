@@ -14,12 +14,12 @@
   ],
   "hashes": {
     "1": {
-      "description": "Idle, full and one-row frames within their time budgets",
+      "description": "Idle, one-row and full-screen updates within their time budgets",
       "timeout": 60000,
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "DB0BDD13"
+        "B10E6A31"
       ]
     },
     "2": {

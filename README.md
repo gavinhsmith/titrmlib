@@ -17,7 +17,7 @@ graphx itself.
 
 - **Panel tree:** split any panel into fixed, percentage or weighted-fill children, nested as deep as you need
 - **Clipped output:** each panel has its own cursor, and nothing drawn in it can spill outside it
-- **Focus:** `[vars]` moves between focusable panels, and widgets get keys first
+- **Focus:** your app decides which panel has focus; the focused widget gets keys first
 - **Widgets:** text, selectable list, text input, scrollback log, progress bar, plus borders and titles
 - **Glyphs:** box-drawing characters and small status icons (check marks, signal bars, arrows) alongside ASCII
 - **Ticks:** timed events for animation and polling
@@ -85,10 +85,12 @@ sizes are taken first, then fill panels share what's left. Panels can be
 hidden (`term_panel_show`) or removed (`term_panel_destroy`), and their
 siblings reflow.
 
-**Drawing.** Panels are redrawn from scratch every frame. To draw your own
-content, set a draw callback with `term_panel_set_draw`, then use
-`term_panel_print`, `_printf`, `_putc`, `_move` and `_set_attr` inside it.
-Output is clipped to the panel's content area.
+**Drawing.** Output is retained, like curses: what you print into a panel
+with `term_panel_print`, `_printf`, `_putc`, `_move` and `_set_attr` stays
+there until you overwrite it or call `term_panel_clear`. Print whenever your
+state changes, typically in the update function; only the cells that changed
+are redrawn. Output is clipped to the panel's content area, and only panels
+without children hold content.
 
 **Widgets** turn a panel into one with built-in content and key handling:
 `term_make_text`, `term_make_list`, `term_make_input`, `term_make_log` and
@@ -98,14 +100,21 @@ Output is clipped to the panel's content area.
 
 - `TERM_EV_START`, once before the first frame
 - `TERM_EV_KEY`, for keys the focused widget didn't use
-- `TERM_EV_SELECT`, when a list item is chosen with `[enter]`
-- `TERM_EV_SUBMIT`, when an input is submitted with `[enter]`
+- `TERM_EV_SUBMIT`, when the user confirms with `[enter]`: an input, or a list item (`value` is its index)
+- `TERM_EV_CHANGE`, when the user changes a widget: moves a list selection or edits an input
+- `TERM_EV_FOCUS_LOST`, when the focused panel is hidden or destroyed
 - `TERM_EV_TICK`, every interval set with `term_set_tick(ctx, ms)`
 
-`[vars]` moves focus to the next focusable panel. `[alpha]` types one
-upper-case letter and `[2nd][alpha]` locks alpha; `term_alpha_mode()` reports
-the current state. `term_quit(ctx, result)` ends `term_run()`, which returns
-`result`.
+**Focus.** Your app moves focus with `term_focus(ctx, panel)`; nothing is
+focused until it does, and titrmlib never moves it on its own. `[vars]` is an
+ordinary key (`TERM_KEY_VARS`), so you can use it to cycle focus, as the demo
+does. Input, list and log widgets are focusable; other panels opt in with
+`term_panel_set_focusable`.
+
+**Keys.** `[alpha]` types one upper-case letter and `[2nd][alpha]` locks
+alpha; `[alpha]` itself arrives as `TERM_KEY_ALPHA`, and `term_alpha_mode()`
+reports the state. Held arrow keys and `[del]` repeat. `term_quit(ctx,
+result)` ends `term_run()`, which returns `result`.
 
 **Special characters.** Codes 0x80–0xFF hold box-drawing characters and
 icons, named `TERM_CH_*` (e.g. `TERM_CH_CHECK`). The same characters as string

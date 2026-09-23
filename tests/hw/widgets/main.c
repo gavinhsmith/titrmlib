@@ -20,6 +20,8 @@
 #define NUM_ITEMS 30
 
 typedef struct {
+    term_panel_t *status;
+    term_panel_t *footer;
     term_panel_t *list;
     term_panel_t *input;
     term_panel_t *log;
@@ -34,8 +36,9 @@ static const char *focus_name(const app_t *app, const term_panel_t *p) {
     return p ? "?" : "none";
 }
 
-static void draw_status(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    app_t *app = user;
+static void print_status(term_ctx_t *ctx, app_t *app) {
+    term_panel_t *p = app->status;
+    term_panel_clear(p);
     term_panel_set_attr(p, TERM_ATTR_REVERSE);
     term_panel_repeat(p, ' ', term_panel_width(p));
     term_panel_move(p, 1, 0);
@@ -43,10 +46,16 @@ static void draw_status(term_ctx_t *ctx, term_panel_t *p, void *user) {
                       term_alpha_mode(ctx));
 }
 
-static void draw_footer(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    app_t *app = user;
-    term_panel_printf(p, "sel=%d input=\"%s\"", term_list_selected(app->list), term_input_text(app->input));
+static void print_footer(app_t *app) {
+    term_panel_clear(app->footer);
+    term_panel_printf(app->footer, "sel=%d input=\"%s\"", term_list_selected(app->list),
+                      term_input_text(app->input));
+}
+
+/* [vars] moves focus list -> input -> log -> list. */
+static void focus_next(term_ctx_t *ctx, app_t *app) {
+    term_panel_t *now = term_focused(ctx);
+    term_focus(ctx, now == app->list ? app->input : now == app->input ? app->log : app->list);
 }
 
 static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
@@ -57,23 +66,29 @@ static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
             term_log_printf(app->log, "boot line %d", i);
         }
         break;
-    case TERM_EV_SELECT:
-        term_log_printf(app->log, "select %d (%s)", ev->value, app->items[ev->value]);
-        break;
     case TERM_EV_SUBMIT:
-        term_log_printf(app->log, "submit \"%s\"", term_input_text(ev->panel));
-        term_input_set(ev->panel, "");
+        if (ev->panel == app->list) {
+            term_log_printf(app->log, "select %d (%s)", ev->value, app->items[ev->value]);
+        } else {
+            term_log_printf(app->log, "submit \"%s\"", term_input_text(ev->panel));
+            term_input_set(ev->panel, "");
+        }
         break;
     case TERM_EV_KEY:
         if (ev->key == TERM_KEY_CLEAR) {
             term_quit(ctx, 0);
-        } else {
+            return;
+        } else if (ev->key == TERM_KEY_VARS) {
+            focus_next(ctx, app);
+        } else if (ev->key != TERM_KEY_ALPHA) {
             term_log_printf(app->log, "key %d from %s", (int)ev->key, focus_name(app, ev->panel));
         }
         break;
-    default:
+    default: /* TERM_EV_CHANGE: the footer shows the new value */
         break;
     }
+    print_status(ctx, app);
+    print_footer(app);
 }
 
 int main(void) {
@@ -88,11 +103,9 @@ int main(void) {
         app.items[i] = app.labels[i];
     }
 
-    term_panel_t *status = term_split(root, TERM_VERTICAL, TERM_FIXED(1));
+    app.status = term_split(root, TERM_VERTICAL, TERM_FIXED(1));
     term_panel_t *body = term_split(root, TERM_VERTICAL, TERM_FILL);
-    term_panel_t *footer = term_split(root, TERM_VERTICAL, TERM_FIXED(1));
-    term_panel_set_draw(status, draw_status, &app);
-    term_panel_set_draw(footer, draw_footer, &app);
+    app.footer = term_split(root, TERM_VERTICAL, TERM_FIXED(1));
 
     app.list = term_split(body, TERM_HORIZONTAL, TERM_FIXED(16));
     term_panel_t *right = term_split(body, TERM_HORIZONTAL, TERM_FILL);
@@ -108,6 +121,8 @@ int main(void) {
     term_panel_set_border(app.log, true);
     term_panel_set_title(app.log, "Log");
     term_make_log(app.log, 50);
+
+    term_focus(ctx, app.list);
 
     term_run(ctx, on_event, &app);
     term_shutdown(ctx);

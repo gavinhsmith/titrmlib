@@ -4,6 +4,14 @@
 #include "titrm.h"
 #include "titrm_font.h"
 
+/* One character cell: glyph code and palette colors. Panels keep their own
+ * cells (retained output); each frame they are composed into the screen grid. */
+typedef struct {
+    uint8_t ch;
+    uint8_t fg;
+    uint8_t bg;
+} term_cell_t;
+
 typedef enum {
     TERM_KIND_PLAIN,
     TERM_KIND_TEXT,
@@ -34,12 +42,15 @@ struct term_panel {
     uint8_t x, y, w, h;
     uint8_t ix, iy, iw, ih;
 
-    /* Output state, reset at the start of each frame. Inner coordinates. */
+    /* Retained content: iw * ih cells, row by row. Only leaf panels have
+     * cells; panels with children just lay them out. NULL when empty. */
+    term_cell_t *cells;
+    uint8_t cells_w, cells_h; /* size of `cells`, kept in step with iw, ih */
+    uint8_t stale;            /* widget content must be rebuilt before the next frame */
+
+    /* Output cursor and attribute, in content coordinates. They persist. */
     uint8_t cur_x, cur_y;
     uint8_t attr;
-
-    term_draw_fn draw;
-    void *draw_user;
 
     uint8_t kind;
     union {
@@ -73,6 +84,7 @@ struct term_panel {
 };
 
 #define TERM_LOG_LINE (TERM_COLS + 1)
+#define TERM_KEY_QUEUE 16
 
 struct term_ctx {
     term_panel_t panels[TERM_MAX_PANELS];
@@ -83,7 +95,8 @@ struct term_ctx {
     void *state;
 
     uint8_t layout_dirty;
-    uint8_t refocus; /* the focused panel was destroyed: pick a new one */
+    uint8_t dirty;   /* something changed: the next frame must compose */
+    uint8_t focus_lost; /* the focused panel was destroyed: tell the app */
     uint8_t quit;
     int result;
 
@@ -92,10 +105,29 @@ struct term_ctx {
 
     unsigned long tick;      /* clock() ticks between TERM_EV_TICK, 0 = off */
     unsigned long last_tick;
+
+    /* Scan codes read while a frame was being drawn, handled in order. */
+    uint8_t keys[TERM_KEY_QUEUE];
+    uint8_t key_head;
+    uint8_t key_count;
+
+    /* Keypad state from the last scan (keypadc groups 1-7), and the held key
+     * being repeated, if any. */
+    uint8_t kb_prev[8];
+    uint8_t repeat_key;
+    unsigned long repeat_since; /* clock() of its last press or repeat */
+    unsigned long repeat_wait;  /* clock() ticks until the next repeat */
 };
 
-/* Writes one cell of the current frame, clipped to `p`'s content area. */
+/* Writes one cell of `p`'s retained content, clipped to its content area. */
 void term_put(term_panel_t *p, int col, int row, uint8_t ch, uint8_t attr);
+
+/* Marks a widget's content out of date: it is rebuilt before the next frame. */
+void term_panel_touch(term_panel_t *p);
+
+/* Number of scan codes waiting in the key queue (used by the host tests'
+ * keypad stub to know when the run is really idle). */
+int term_keys_pending(void);
 
 /* Delivers a widget event to the app's update callback. */
 void term_emit(term_ctx_t *ctx, term_event_type_t type, term_panel_t *panel, int value);

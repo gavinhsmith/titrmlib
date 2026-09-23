@@ -1,5 +1,5 @@
-/* Host stand-in for CEdev's ti/getcsc.h. Scan codes match the real header;
- * os_GetCSC() plays back a script set with stub_keys() (stubs.c). */
+/* Host stand-in for CEdev's ti/getcsc.h: the scan code names, which match
+ * the real header. titrmlib reads the keypad through keypadc.h. */
 #ifndef TI_GETCSC_H
 #define TI_GETCSC_H
 
@@ -54,14 +54,5 @@ typedef uint8_t sk_key_t;
 #define sk_2nd    0x36
 #define sk_Mode   0x37
 #define sk_Del    0x38
-
-uint8_t os_GetCSC(void);
-
-/* Queues `n` scan codes for os_GetCSC() to return, one per call. Once they
- * run out it returns 0 and, unless stub_quit_when_idle is cleared, ends
- * term_run() with result STUB_IDLE_RESULT so a test can't hang. */
-#define STUB_IDLE_RESULT (-999)
-extern int stub_quit_when_idle;
-void stub_keys(const uint8_t *keys, int n);
 
 #endif

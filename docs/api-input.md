@@ -41,12 +41,13 @@ Keys, as delivered in [term_event_t.key](#key).
 | `TERM_KEY_DEL` |  |
 | `TERM_KEY_2ND` |  |
 | `TERM_KEY_MODE` |  |
-| `TERM_KEY_TAB` | [vars]: handled by the framework as "next panel" |
+| `TERM_KEY_VARS` | [vars]: an ordinary key; the app decides what it does |
 | `TERM_KEY_F1` | [y=]; F2-F5 are [window] [zoom] [trace] [graph] |
 | `TERM_KEY_F2` |  |
 | `TERM_KEY_F3` |  |
 | `TERM_KEY_F4` |  |
 | `TERM_KEY_F5` |  |
+| `TERM_KEY_ALPHA` | [alpha], after the alpha state changed; see [term_alpha_mode()](#term_alpha_mode) |
 | `TERM_KEY_CHAR` | a printable character; see [term_event_t.ch](#ch) |
 
 ---
@@ -57,17 +58,18 @@ Keys, as delivered in [term_event_t.key](#key).
 enum term_event_type_t
 ```
 
-Defined in src/titrm.h:115
+Defined in src/titrm.h:116
 
 Kinds of event passed to the update function.
 
 | Value | Description |
 |-------|-------------|
 | `TERM_EV_START` | once, before the first frame |
-| `TERM_EV_KEY` | a key the focused panel did not consume |
+| `TERM_EV_KEY` | a key the focused widget did not consume |
 | `TERM_EV_TICK` | the interval set with [term_set_tick()](api-lifecycle.md#term_set_tick) elapsed |
-| `TERM_EV_SELECT` | list item chosen with [enter]; panel = list, value = index |
-| `TERM_EV_SUBMIT` | input submitted with [enter]; panel = input |
+| `TERM_EV_SUBMIT` | the user confirmed with [enter]: an input, or a list item (value = index) |
+| `TERM_EV_CHANGE` | the user changed a widget: list selection moved (value = index) or input text edited |
+| `TERM_EV_FOCUS_LOST` | the focused panel was hidden (panel = it) or destroyed (panel = NULL); focus is now empty |
 ## Typedefs
 
 | Return | Name | Description |
@@ -82,7 +84,7 @@ Kinds of event passed to the update function.
 using term_update_fn = void(*)
 ```
 
-Defined in src/titrm.h:133
+Defined in src/titrm.h:135
 
 Called for every event the framework does not handle itself.
 
@@ -100,7 +102,7 @@ Called for every event the framework does not handle itself.
 int term_alpha_mode(const term_ctx_t * ctx)
 ```
 
-Defined in src/titrm.h:140
+Defined in src/titrm.h:142
 
 Alpha state, for status displays: 0 = off, 1 = next key only, 2 = locked.
 
@@ -121,7 +123,7 @@ Alpha state, for status displays: 0 = off, 1 = next key only, 2 = locked.
 struct term_event_t
 ```
 
-Defined in src/titrm.h:124
+Defined in src/titrm.h:126
 
 An event passed to the update function.
 
@@ -133,7 +135,7 @@ An event passed to the update function.
 | [`term_key_t`](#term_key_t) | [`key`](#key)  | TERM_EV_KEY |
 | `char` | [`ch`](#ch)  | TERM_EV_KEY with TERM_KEY_CHAR: typed character |
 | [`term_panel_t`](api-types.md#term_panel_t) * | [`panel`](#panel)  | widget events: the source. key events: focused panel |
-| `int` | [`value`](#value)  | TERM_EV_SELECT: item index |
+| `int` | [`value`](#value)  | TERM_EV_SUBMIT and TERM_EV_CHANGE from a list: item index |
 
 ---
 
@@ -145,7 +147,7 @@ term_event_type_t type
 
 Type: [`term_event_type_t`](#term_event_type_t)
 
-Defined in src/titrm.h:125
+Defined in src/titrm.h:127
 
 what happened
 
@@ -159,7 +161,7 @@ term_key_t key
 
 Type: [`term_key_t`](#term_key_t)
 
-Defined in src/titrm.h:126
+Defined in src/titrm.h:128
 
 TERM_EV_KEY
 
@@ -171,7 +173,7 @@ TERM_EV_KEY
 char ch
 ```
 
-Defined in src/titrm.h:127
+Defined in src/titrm.h:129
 
 TERM_EV_KEY with TERM_KEY_CHAR: typed character
 
@@ -185,7 +187,7 @@ term_panel_t * panel
 
 Type: [`term_panel_t`](api-types.md#term_panel_t) *
 
-Defined in src/titrm.h:128
+Defined in src/titrm.h:130
 
 widget events: the source. key events: focused panel
 
@@ -197,7 +199,7 @@ widget events: the source. key events: focused panel
 int value
 ```
 
-Defined in src/titrm.h:129
+Defined in src/titrm.h:131
 
-TERM_EV_SELECT: item index
+TERM_EV_SUBMIT and TERM_EV_CHANGE from a list: item index
 

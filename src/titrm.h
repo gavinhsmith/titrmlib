@@ -102,22 +102,24 @@ typedef enum {
     TERM_KEY_DEL,
     TERM_KEY_2ND,
     TERM_KEY_MODE,
-    TERM_KEY_TAB, /**< [vars]: handled by the framework as "next panel" */
+    TERM_KEY_VARS, /**< [vars]: an ordinary key; the app decides what it does */
     TERM_KEY_F1,  /**< [y=]; F2-F5 are [window] [zoom] [trace] [graph] */
     TERM_KEY_F2,
     TERM_KEY_F3,
     TERM_KEY_F4,
     TERM_KEY_F5,
+    TERM_KEY_ALPHA, /**< [alpha], after the alpha state changed; see term_alpha_mode() */
     TERM_KEY_CHAR /**< a printable character; see term_event_t.ch */
 } term_key_t;
 
 /** @brief Kinds of event passed to the update function. */
 typedef enum {
-    TERM_EV_START,  /**< once, before the first frame */
-    TERM_EV_KEY,    /**< a key the focused panel did not consume */
-    TERM_EV_TICK,   /**< the interval set with term_set_tick() elapsed */
-    TERM_EV_SELECT, /**< list item chosen with [enter]; panel = list, value = index */
-    TERM_EV_SUBMIT  /**< input submitted with [enter]; panel = input */
+    TERM_EV_START,      /**< once, before the first frame */
+    TERM_EV_KEY,        /**< a key the focused widget did not consume */
+    TERM_EV_TICK,       /**< the interval set with term_set_tick() elapsed */
+    TERM_EV_SUBMIT,     /**< the user confirmed with [enter]: an input, or a list item (value = index) */
+    TERM_EV_CHANGE,     /**< the user changed a widget: list selection moved (value = index) or input text edited */
+    TERM_EV_FOCUS_LOST  /**< the focused panel was hidden (panel = it) or destroyed (panel = NULL); focus is now empty */
 } term_event_type_t;
 
 /** @brief An event passed to the update function. */
@@ -126,7 +128,7 @@ typedef struct {
     term_key_t key;      /**< TERM_EV_KEY */
     char ch;             /**< TERM_EV_KEY with TERM_KEY_CHAR: typed character */
     term_panel_t *panel; /**< widget events: the source. key events: focused panel */
-    int value;           /**< TERM_EV_SELECT: item index */
+    int value;           /**< TERM_EV_SUBMIT and TERM_EV_CHANGE from a list: item index */
 } term_event_t;
 
 /** @brief Called for every event the framework does not handle itself. */
@@ -228,10 +230,10 @@ void term_panel_set_border(term_panel_t *panel, bool border);
 /** @brief Sets a title into the top edge of the border. May be NULL; must outlive the panel. */
 void term_panel_set_title(term_panel_t *panel, const char *title);
 
-/** @brief Content width in cells (inside the border), as of the last layout. */
+/** @brief Content width in cells (inside the border). */
 int term_panel_width(const term_panel_t *panel);
 
-/** @brief Content height in cells (inside the border), as of the last layout. */
+/** @brief Content height in cells (inside the border). */
 int term_panel_height(const term_panel_t *panel);
 
 /** @} */
@@ -240,19 +242,22 @@ int term_panel_height(const term_panel_t *panel);
  * @defgroup focus Focus
  * @brief Which panel receives keys.
  *
+ * Keys go to the focused panel's widget first, and to the app if the widget
+ * doesn't use them. The app decides where focus goes: titrmlib never moves it
+ * on its own. Nothing is focused until the app calls term_focus(). If the
+ * focused panel is hidden or destroyed, focus becomes empty and the app gets
+ * TERM_EV_FOCUS_LOST.
+ *
  * Widgets that take input (list, input, log) are focusable by default; any
- * panel can opt in. [vars] moves focus forward in tree order.
+ * other panel can opt in with term_panel_set_focusable().
  * @{
  */
 
 /** @brief Lets a panel take focus, or stops it. */
 void term_panel_set_focusable(term_panel_t *panel, bool focusable);
 
-/** @brief Moves focus to `panel` (making it focusable), or clears it with NULL. */
+/** @brief Moves focus to `panel`, or clears it with NULL. Ignored for a panel that isn't focusable. */
 void term_focus(term_ctx_t *ctx, term_panel_t *panel);
-
-/** @brief Moves focus to the next focusable panel in tree order, as [vars] does. */
-void term_focus_next(term_ctx_t *ctx);
 
 /** @brief The focused panel, or NULL. */
 term_panel_t *term_focused(const term_ctx_t *ctx);
@@ -263,17 +268,16 @@ term_panel_t *term_focused(const term_ctx_t *ctx);
  * @defgroup output Panel-scoped output
  * @brief Drawing text into a panel.
  *
+ * Output is retained: what is printed into a panel stays there, and is shown
+ * again every frame, until it is overwritten or cleared. The cursor and
+ * attribute persist too. Only the parts of the screen that change are redrawn.
+ *
  * Everything here is clipped to the panel's content area, whatever its depth
- * in the tree. Panels are redrawn from scratch every frame: put output in a
- * draw callback rather than expecting it to persist.
+ * in the tree. Only panels without children hold content; output to a panel
+ * that has been split is ignored. Resizing a panel keeps the part of its
+ * content that still fits, anchored at the top left.
  * @{
  */
-
-/** @brief A draw callback; see term_panel_set_draw(). */
-typedef void (*term_draw_fn)(term_ctx_t *ctx, term_panel_t *panel, void *user);
-
-/** @brief Sets the panel's draw callback, called each frame with a blank panel, its cursor at 0,0. */
-void term_panel_set_draw(term_panel_t *panel, term_draw_fn draw, void *user);
 
 /** @brief Moves the panel's cursor. */
 void term_panel_move(term_panel_t *panel, int col, int row);
@@ -316,7 +320,7 @@ void term_make_text(term_panel_t *panel, const char *text);
 void term_text_set(term_panel_t *panel, const char *text);
 
 /**
- * @brief Selectable list. up/down move, [enter] emits TERM_EV_SELECT.
+ * @brief Selectable list. up/down move (TERM_EV_CHANGE), [enter] emits TERM_EV_SUBMIT.
  *
  * Items are not copied. Embed icons with TERM_S_* (e.g. TERM_S_CHECK "Done").
  */

@@ -96,31 +96,23 @@ typedef struct {
 
 static const char *const items[] = {"one", "two", "three"};
 
-static void draw_text(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    (void)user;
+static void print_text(term_panel_t *p) {
     term_panel_print(p, "Hello, CE! " TERM_S_CHECK "\n");
     term_panel_printf(p, "%d|%u|%ld|%x", -12345, 54321u, 1234567L, 0xBEEFu);
 }
 
-static void draw_clip(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    (void)user;
+static void print_clip(term_panel_t *p) {
     term_panel_print(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
     term_panel_move(p, 0, 5);
     term_panel_print(p, "XXXXXXXXXX");
 }
 
-static void draw_reverse(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    (void)user;
+static void print_reverse(term_panel_t *p) {
     term_panel_set_attr(p, TERM_ATTR_REVERSE);
     term_panel_print(p, "REV");
 }
 
-static void draw_results(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    (void)user;
+static void print_results(term_panel_t *p) {
     int failed = 0;
     for (int i = 0; i < num_checks; i++) {
         term_panel_print(p, checks[i].ok ? TERM_S_CHECK " " : TERM_S_CROSSMARK " ");
@@ -164,7 +156,9 @@ static void run_checks(term_ctx_t *ctx, app_t *app) {
     check("screen: progress 999/1000",
           cell_is(52, 29, TERM_CH_SHADE, false) && !cell_is(51, 29, TERM_CH_SHADE, false));
 
-    check("focus: skips hidden panels", term_focused(ctx) == app->log);
+    check("focus: none until the app sets it", term_focused(ctx) == NULL);
+    term_focus(ctx, app->text); /* a plain panel, not focusable */
+    check("focus: refuses a plain panel", term_focused(ctx) == NULL);
 
     char long_text[61];
     memset(long_text, 'a', 60);
@@ -216,7 +210,7 @@ static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
         term_panel_t *results = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
         term_panel_set_border(results, true);
         term_panel_set_title(results, "selfcheck");
-        term_panel_set_draw(results, draw_results, NULL);
+        print_results(results);
         break;
     case TERM_EV_KEY:
         if (ev->key == TERM_KEY_CLEAR) {
@@ -236,15 +230,15 @@ int main(void) {
     app.text = term_split(root, TERM_VERTICAL, TERM_FIXED(4));
     term_panel_set_border(app.text, true);
     term_panel_set_title(app.text, "fixture");
-    term_panel_set_draw(app.text, draw_text, NULL);
+    print_text(app.text);
 
     app.row = term_split(root, TERM_VERTICAL, TERM_FIXED(5));
     app.clip = term_split(app.row, TERM_HORIZONTAL, TERM_FIXED(10));
     term_panel_set_border(app.clip, true);
-    term_panel_set_draw(app.clip, draw_clip, NULL);
+    print_clip(app.clip);
     term_split(app.row, TERM_HORIZONTAL, TERM_FIXED(10)); /* must stay blank */
     term_panel_t *rev = term_split(app.row, TERM_HORIZONTAL, TERM_FILL);
-    term_panel_set_draw(rev, draw_reverse, NULL);
+    print_reverse(rev);
 
     app.log = term_split(root, TERM_VERTICAL, TERM_FILL);
     term_make_log(app.log, 200);
@@ -253,7 +247,7 @@ int main(void) {
     term_make_progress(app.progress, 1000);
     term_progress_set(app.progress, 999);
 
-    /* Focusable widgets that are hidden: focus must pass them by. */
+    /* Widgets checked through their API only; hidden so they take no space. */
     app.input = term_split(root, TERM_VERTICAL, TERM_FIXED(1));
     term_make_input(app.input);
     term_panel_show(app.input, false);

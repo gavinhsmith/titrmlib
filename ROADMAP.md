@@ -8,10 +8,6 @@
 
 ## Known issues
 
-- **Quick repeated key presses can merge.** `os_GetCSC()` holds a single key
-  between polls, so two presses within one frame count as one. A typical update
-  takes about 105 ms and a full-screen redraw about 400 ms (emulated). Phase 2
-  addresses both.
 - **Hardware tests don't run in CI.** They need a TI-84 Plus CE ROM, which can't
   be distributed. CI only builds the test programs.
 

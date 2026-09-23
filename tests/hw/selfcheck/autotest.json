@@ -19,7 +19,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "E73314DB"
+        "CBE07319"
       ]
     },
     "2": {

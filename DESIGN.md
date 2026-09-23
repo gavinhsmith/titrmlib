@@ -1,7 +1,7 @@
 # Phase 2 design
 
-Status: agreed, not started. titrmlib is at v0.1.0, so the API may change
-freely until v1.0.
+Status: in progress on the `phase-2` branch; see [Progress](#progress).
+titrmlib is at v0.1.0, so the API may change freely until v1.0.
 
 Phase 2 reworks how titrmlib renders and routes input, then adds scenes,
 overlays, a revised widget set and color. Function and type names below are
@@ -141,6 +141,49 @@ Built-in widgets:
 Each step keeps the unit tests and hardware tests passing, with screens
 re-recorded where output changes on purpose. The `perf` budgets tighten to
 the 50 ms goal once step 1 lands.
+
+## Progress
+
+| Step | State |
+|---|---|
+| 1. Retained panels, change-based rendering, key queue | Done |
+| 2. Focus and event changes | Done |
+| 3. Scenes | Not started |
+| 4. Overlays | Not started |
+| 5. Widget set and demo | Not started |
+| 6. Color | Not started |
+
+Steps 1 and 2 were built together: with retained output, the app has to be
+told about everything that changes what it shows, which is what step 2 adds.
+
+### Decisions made while building steps 1–2
+
+- **Composing.** When anything changes, a frame copies every visible panel's
+  retained cells into the screen grid; only changed cells are then drawn. When
+  nothing changed, the frame does nothing. Tracking dirty regions per panel
+  was not needed: copying cells is cheap, and this also suits overlays.
+- **Only leaf panels hold content.** A panel with children has no cells, and
+  output to it is ignored. This keeps memory to about one screen of cells.
+  Splitting a panel discards what was printed into it.
+- **Resizing** keeps the part of a panel's content that still fits, anchored
+  at the top left. Widgets redraw at the new size; plain panels don't reflow.
+- **Keypad input uses keypadc, not `os_GetCSC()`.** Measured in CEmu,
+  `os_GetCSC()` takes about 19 ms per call and `kb_Scan()` about 1.3 ms.
+  titrmlib finds presses by comparing scans, queues them, and repeats held
+  arrows and `[del]` itself (400 ms delay, then about 12 per second), since the
+  OS no longer does. Keys already down at startup are ignored.
+- **`[alpha]` reaches the app** as `TERM_KEY_ALPHA`, after the alpha state
+  changes, so status displays can update.
+- **`TERM_EV_CHANGE` is only for changes the user makes** (moving a list
+  selection, editing an input). Changes the app makes itself, like
+  `term_list_select()` or `term_input_set()`, send nothing.
+- **`term_focus()` ignores panels that aren't focusable.** Input, list and log
+  widgets are focusable; other panels opt in with
+  `term_panel_set_focusable()`.
+- **`TERM_EV_FOCUS_LOST`** carries the hidden panel, or NULL if it was
+  destroyed.
+- **Performance:** a typical update (one row changed) measures ~46 ms against
+  the 50 ms goal; the `perf` hardware test now fails above 50 ms.
 
 ## Still to decide
 

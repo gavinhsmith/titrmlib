@@ -5,7 +5,7 @@
  * keypad plays back a scripted list of scan codes, so layout, clipping,
  * focus, widgets and the run loop can all be exercised without a calculator
  * or emulator. titrm.c is included directly so the tests can read the cell
- * grid it builds each frame.
+ * grid it composes each frame.
  *
  *     make -C tests
  */
@@ -13,6 +13,7 @@
 #include "titrm.c"
 
 #include <graphx.h>
+#include <keypadc.h>
 #include <ti/getcsc.h>
 
 #include <stdio.h>
@@ -69,13 +70,15 @@ static term_ctx_t *setup(void) {
     return term_init();
 }
 
-/* Builds and flushes one frame, as term_run() does after each event. */
+/* Composes and flushes one frame, as term_run() does after each event. */
 static void draw(term_ctx_t *ctx) {
     frame(ctx);
 }
 
 static uint8_t ch_at(int col, int row) { return grid[row][col].ch; }
-static uint8_t attr_at(int col, int row) { return grid[row][col].attr; }
+static uint8_t attr_at(int col, int row) {
+    return grid[row][col].bg == TERM_FG ? TERM_ATTR_REVERSE : TERM_ATTR_NORMAL;
+}
 
 /* `len` cells of a grid row as a string; empty cells read as spaces. */
 static const char *text_at(int col, int row, int len) {
@@ -323,9 +326,7 @@ static void test_destroy_frees_subtree(void) {
 
 /* ---- Panel-scoped output and clipping ------------------------------------ */
 
-static void draw_long_line(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    (void)user;
+static void print_long_line(term_panel_t *p) {
     term_panel_print(p, "0123456789ABCDEFGHIJ");
     term_panel_move(p, -5, 1);
     term_panel_print(p, "x\ny");
@@ -340,7 +341,7 @@ static void test_print_is_clipped(void) {
     term_panel_t *left = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(12));
     term_panel_t *right = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FILL);
     term_panel_set_border(left, true);
-    term_panel_set_draw(left, draw_long_line, NULL);
+    print_long_line(left);
     (void)right;
     draw(ctx);
 
@@ -353,18 +354,12 @@ static void test_print_is_clipped(void) {
     CHECK(row_blank(TERM_ROWS - 1, 1, 11) == false); /* bottom border intact */
 }
 
-static void draw_wrapped(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    (void)user;
-    term_panel_wrap(p, true);
-    term_panel_set_attr(p, TERM_ATTR_REVERSE);
-    term_panel_printf(p, "%s-%d", "abcdef", 42);
-}
-
 static void test_print_wrap_and_attr(void) {
     term_ctx_t *ctx = setup();
     term_panel_t *p = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(4));
-    term_panel_set_draw(p, draw_wrapped, NULL);
+    term_panel_wrap(p, true);
+    term_panel_set_attr(p, TERM_ATTR_REVERSE);
+    term_panel_printf(p, "%s-%d", "abcdef", 42);
     draw(ctx);
 
     CHECK_STR(text_at(0, 0, 4), "abcd");
@@ -390,6 +385,7 @@ static void test_border_and_title(void) {
     CHECK_EQ(ch_at(8, 0), TERM_CH_HLINE);
     CHECK_EQ(attr_at(2, 0), TERM_ATTR_NORMAL);
 
+    term_panel_set_focusable(p, true);
     term_focus(ctx, p);
     draw(ctx);
     CHECK_EQ(attr_at(2, 0), TERM_ATTR_REVERSE);
@@ -397,9 +393,7 @@ static void test_border_and_title(void) {
 
 /* ---- Pixels -------------------------------------------------------------- */
 
-static void draw_glyphs(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    (void)user;
+static void print_glyphs(term_panel_t *p) {
     term_panel_print(p, "A");
     term_panel_set_attr(p, TERM_ATTR_REVERSE);
     term_panel_putc(p, ' ');
@@ -407,7 +401,7 @@ static void draw_glyphs(term_ctx_t *ctx, term_panel_t *p, void *user) {
 
 static void test_glyph_blit(void) {
     term_ctx_t *ctx = setup();
-    term_panel_set_draw(term_root(ctx), draw_glyphs, NULL);
+    print_glyphs(term_root(ctx));
     draw(ctx);
 
     /* 'A' at cell 0,0: glyph bit 4 is the leftmost pixel; column 5 and row 7
@@ -429,7 +423,7 @@ static void test_glyph_blit(void) {
 
 static void test_flush_only_redraws_changes(void) {
     term_ctx_t *ctx = setup();
-    term_panel_set_draw(term_root(ctx), draw_glyphs, NULL);
+    print_glyphs(term_root(ctx));
     draw(ctx);
 
     /* Scribble on an unchanged cell: a redraw must leave it alone. */
@@ -441,7 +435,7 @@ static void test_flush_only_redraws_changes(void) {
 
     /* A cell whose content changes is repainted. */
     stub_fb[ORIGIN_Y][ORIGIN_X + 4] = 0x55;
-    term_panel_set_draw(term_root(ctx), NULL, NULL);
+    term_panel_clear(term_root(ctx));
     draw(ctx);
     CHECK_EQ(stub_fb[ORIGIN_Y][ORIGIN_X + 4], TERM_BG);
 }
@@ -466,61 +460,197 @@ static void test_connected_glyphs_bridge_gaps(void) {
     }
 }
 
-/* ---- Focus --------------------------------------------------------------- */
+/* ---- Retained output ----------------------------------------------------- */
 
-static void test_focus_order(void) {
+static void test_output_is_retained(void) {
     term_ctx_t *ctx = setup();
-    term_panel_t *root = term_root(ctx);
-    term_panel_t *left = term_split(root, TERM_HORIZONTAL, TERM_FILL);
-    term_panel_t *right = term_split(root, TERM_HORIZONTAL, TERM_FILL);
-    term_panel_t *a = term_split(left, TERM_VERTICAL, TERM_FILL);
-    term_panel_t *b = term_split(left, TERM_VERTICAL, TERM_FILL);
-    term_panel_t *text = term_split(right, TERM_VERTICAL, TERM_FILL);
-    term_panel_t *c = term_split(right, TERM_VERTICAL, TERM_FILL);
-    term_make_list(a, NULL, 0);
-    term_make_input(b);
-    term_make_text(text, "not focusable");
-    term_make_log(c, 4);
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(2));
+    term_panel_print(p, "kept");
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 4), "kept");
+    CHECK_EQ(ctx->dirty, 0);
 
-    CHECK(term_focused(ctx) == NULL);
-    term_focus_next(ctx);
-    CHECK(term_focused(ctx) == a);
-    term_focus_next(ctx);
-    CHECK(term_focused(ctx) == b);
-    term_focus_next(ctx);
-    CHECK(term_focused(ctx) == c); /* skips the text panel */
-    term_focus_next(ctx);
-    CHECK(term_focused(ctx) == a); /* wraps */
+    /* Nothing changed: the next frame composes nothing, so even a scribble on
+     * the grid survives it. */
+    grid[5][5].ch = 'Z';
+    draw(ctx);
+    CHECK_EQ(ch_at(5, 5), 'Z');
+    CHECK_STR(text_at(0, 0, 4), "kept");
 
-    term_panel_show(left, false); /* hiding an ancestor hides the subtree */
-    term_focus_next(ctx);
-    CHECK(term_focused(ctx) == c);
+    /* The cursor persists: the next print continues after the last. */
+    term_panel_print(p, "!");
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 5), "kept!");
+    CHECK_EQ(ch_at(5, 5), 0); /* composed from scratch again */
 
-    term_panel_set_focusable(text, true);
-    term_focus_next(ctx);
-    CHECK(term_focused(ctx) == text);
+    term_panel_clear(p);
+    draw(ctx);
+    CHECK(row_blank(0, 0, TERM_COLS));
 }
 
-static void test_focus_lost_is_reassigned(void) {
+static void test_resize_keeps_content(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *left = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(3));
+    term_panel_t *right = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FILL);
+    term_panel_print(right, "abcdef\nline 2");
+    draw(ctx);
+    CHECK_STR(text_at(3, 0, 6), "abcdef");
+
+    term_panel_show(left, false); /* right grows to the full width */
+    draw(ctx);
+    CHECK_EQ(term_panel_width(right), TERM_COLS);
+    CHECK_STR(text_at(0, 0, 6), "abcdef");
+    CHECK_STR(text_at(0, 1, 6), "line 2");
+
+    term_panel_show(left, true);
+    draw(ctx);
+    CHECK_STR(text_at(3, 1, 6), "line 2");
+}
+
+static void test_split_panel_has_no_content(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *root = term_root(ctx);
+    term_panel_print(root, "before the split");
+    term_panel_t *child = term_split(root, TERM_VERTICAL, TERM_FIXED(1));
+    term_panel_print(root, "ignored");
+    draw(ctx);
+    CHECK(root->cells == NULL);
+    CHECK(row_blank(0, 0, TERM_COLS)); /* the old content went with the split */
+    CHECK(row_blank(5, 0, TERM_COLS));
+    CHECK(child->cells != NULL);
+}
+
+static void test_keys_are_queued_while_drawing(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *input = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(1));
+    term_panel_t *text = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_make_input(input);
+    term_focus(ctx, input);
+    for (int i = 0; i < 20; i++) {
+        term_panel_printf(text, "row %d\n", i);
+    }
+
+    /* The keypad is read after each redrawn row, so keys pressed during a
+     * long frame wait in the queue instead of being lost. */
+    static const uint8_t keys[] = {sk_1, sk_2, sk_3};
+    stub_keys(keys, 3);
+    draw(ctx);
+    CHECK_EQ(term_keys_pending(), 3);
+
+    n_events = 0;
+    CHECK_EQ(term_run(ctx, record, NULL), STUB_IDLE_RESULT);
+    CHECK_STR(term_input_text(input), "123"); /* in order */
+    CHECK_EQ(term_keys_pending(), 0);
+}
+
+static void test_held_keys_repeat(void) {
+    term_ctx_t *ctx = setup();
+    stub_quit_when_idle = 0;
+
+    /* An arrow: one press, then repeats after the delay, then at the rate.
+     * Time is moved on by hand rather than waited out. */
+    stub_hold(sk_Down);
+    poll_keys(ctx);
+    CHECK_EQ(term_keys_pending(), 1);
+    poll_keys(ctx);
+    CHECK_EQ(term_keys_pending(), 1); /* not yet */
+    ctx->repeat_since -= REPEAT_DELAY;
+    poll_keys(ctx);
+    CHECK_EQ(term_keys_pending(), 2);
+    ctx->repeat_since -= REPEAT_RATE;
+    poll_keys(ctx);
+    CHECK_EQ(term_keys_pending(), 3);
+    stub_release();
+    poll_keys(ctx);
+    ctx->repeat_since -= REPEAT_DELAY;
+    poll_keys(ctx);
+    CHECK_EQ(term_keys_pending(), 3); /* released: no more */
+    while (next_key(ctx)) {
+    }
+
+    /* Other keys don't repeat. */
+    stub_hold(sk_1);
+    poll_keys(ctx);
+    ctx->repeat_since -= REPEAT_DELAY;
+    poll_keys(ctx);
+    CHECK_EQ(term_keys_pending(), 1);
+    stub_release();
+    while (next_key(ctx)) {
+    }
+}
+
+static void test_keys_down_at_start_are_ignored(void) {
+    stub_hold(sk_Enter); /* e.g. still held from launching the program */
+    term_ctx_t *ctx = setup();
+    stub_quit_when_idle = 0;
+    poll_keys(ctx);
+    CHECK_EQ(term_keys_pending(), 0);
+
+    stub_release();
+    poll_keys(ctx);
+    stub_hold(sk_Enter); /* pressed again: now it counts */
+    poll_keys(ctx);
+    CHECK_EQ(term_keys_pending(), 1);
+    CHECK_EQ(next_key(ctx), sk_Enter);
+    stub_release();
+}
+
+/* ---- Focus --------------------------------------------------------------- */
+
+static void test_focus_is_set_by_the_app(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *a = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_panel_t *text = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_panel_t *plain = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_make_list(a, NULL, 0);
+    term_make_text(text, "not focusable");
+
+    /* Nothing is focused until the app says so, even while running. */
+    CHECK_EQ(run_keys(ctx, NULL, 0), STUB_IDLE_RESULT);
+    CHECK(term_focused(ctx) == NULL);
+
+    term_focus(ctx, a);
+    CHECK(term_focused(ctx) == a);
+    term_focus(ctx, text); /* not focusable: ignored */
+    CHECK(term_focused(ctx) == a);
+    term_focus(ctx, plain);
+    CHECK(term_focused(ctx) == a);
+    term_panel_set_focusable(plain, true);
+    term_focus(ctx, plain);
+    CHECK(term_focused(ctx) == plain);
+    term_focus(ctx, NULL);
+    CHECK(term_focused(ctx) == NULL);
+}
+
+static void test_focus_lost_is_reported(void) {
     term_ctx_t *ctx = setup();
     term_panel_t *a = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
     term_panel_t *b = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
     term_make_input(a);
     term_make_input(b);
 
+    /* Hidden: focus empties and the app hears which panel lost it. */
     term_focus(ctx, a);
     term_panel_show(a, false);
-    draw(ctx);
-    CHECK(term_focused(ctx) == b);
-
-    term_panel_show(a, true);
-    term_panel_destroy(b);
-    draw(ctx);
-    CHECK(term_focused(ctx) == a);
-
-    term_focus(ctx, NULL); /* explicit "no focus" is respected */
-    draw(ctx);
+    run_keys(ctx, NULL, 0);
     CHECK(term_focused(ctx) == NULL);
+    CHECK_EQ(count_events(TERM_EV_FOCUS_LOST), 1);
+    CHECK(last_event(TERM_EV_FOCUS_LOST)->panel == a);
+
+    /* Destroyed: the handle is gone, so the event carries NULL. */
+    term_focus(ctx, b);
+    term_panel_destroy(b);
+    CHECK(term_focused(ctx) == NULL);
+    run_keys(ctx, NULL, 0);
+    CHECK_EQ(count_events(TERM_EV_FOCUS_LOST), 1);
+    CHECK(last_event(TERM_EV_FOCUS_LOST)->panel == NULL);
+
+    /* An explicit "no focus" is not a loss. */
+    term_panel_show(a, true);
+    term_focus(ctx, a);
+    term_focus(ctx, NULL);
+    run_keys(ctx, NULL, 0);
+    CHECK_EQ(count_events(TERM_EV_FOCUS_LOST), 0);
 }
 
 /* ---- Run loop and keypad ------------------------------------------------- */
@@ -566,10 +696,13 @@ static void test_key_translation(void) {
         CHECK_EQ(events[1 + i].key, want_keys[i]);
     }
 
-    const char want_chars[] = "7.-^A" "\x02" "B 0"; /* \x02 = the [2nd] key event */
+    /* \x01 = an [alpha] key event, \x02 = a [2nd] key event */
+    const char want_chars[] = "7.-^" "\x01" "A" "\x02\x01" "B " "\x01" "0";
     int e = 1 + n;
     for (int i = 0; want_chars[i]; i++, e++) {
-        if (want_chars[i] == '\x02') {
+        if (want_chars[i] == '\x01') {
+            CHECK_EQ(events[e].key, TERM_KEY_ALPHA);
+        } else if (want_chars[i] == '\x02') {
             CHECK_EQ(events[e].key, TERM_KEY_2ND);
         } else {
             CHECK_EQ(events[e].key, TERM_KEY_CHAR);
@@ -593,18 +726,32 @@ static void test_alpha_mode_state(void) {
     CHECK_EQ(term_alpha_mode(ctx), 2); /* lock survives typing */
 }
 
-static void test_tab_cycles_focus(void) {
+/* The app moves focus itself, here on [vars]. */
+static void focus_on_vars(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+    term_panel_t **panels = state;
+    if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_VARS) {
+        term_focus(ctx, term_focused(ctx) == panels[0] ? panels[1] : panels[0]);
+    }
+    record(ctx, ev, NULL);
+}
+
+static void test_vars_is_an_ordinary_key(void) {
     term_ctx_t *ctx = setup();
-    term_panel_t *a = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
-    term_panel_t *b = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
-    term_make_input(a);
-    term_make_input(b);
+    term_panel_t *panels[2];
+    panels[0] = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    panels[1] = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_make_input(panels[0]);
+    term_make_input(panels[1]);
+    term_focus(ctx, panels[0]);
 
     static const uint8_t keys[] = {sk_1, sk_Vars, sk_2, sk_Vars, sk_Vars, sk_3};
-    run_keys(ctx, keys, (int)sizeof keys);
-    CHECK_STR(term_input_text(a), "1");
-    CHECK_STR(term_input_text(b), "23");
-    CHECK_EQ(count_events(TERM_EV_KEY), 0); /* inputs and [vars] consume everything */
+    n_events = 0;
+    stub_keys(keys, (int)sizeof keys);
+    term_run(ctx, focus_on_vars, panels);
+    CHECK_STR(term_input_text(panels[0]), "1");
+    CHECK_STR(term_input_text(panels[1]), "23");
+    CHECK_EQ(count_events(TERM_EV_KEY), 3); /* the three [vars] reach the app */
+    CHECK_EQ(last_event(TERM_EV_KEY)->key, TERM_KEY_VARS);
 }
 
 static void quit_after_ticks(term_ctx_t *ctx, const term_event_t *ev, void *state) {
@@ -654,14 +801,19 @@ static void test_list_navigation_and_select(void) {
     term_ctx_t *ctx = setup();
     term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
     term_make_list(p, items, 6);
+    term_focus(ctx, p);
     CHECK_EQ(term_list_selected(p), 0);
 
     static const uint8_t keys[] = {sk_Up, sk_Enter, sk_Down, sk_Down, sk_Enter};
     run_keys(ctx, keys, (int)sizeof keys);
-    CHECK_EQ(count_events(TERM_EV_SELECT), 2);
+    CHECK_EQ(count_events(TERM_EV_SUBMIT), 2);
+    CHECK_EQ(count_events(TERM_EV_CHANGE), 3); /* one per move */
+    CHECK_EQ(events[1].type, TERM_EV_CHANGE);
     CHECK_EQ(events[1].value, 5); /* up from the top wraps to the bottom */
-    CHECK(last_event(TERM_EV_SELECT)->panel == p);
-    CHECK_EQ(last_event(TERM_EV_SELECT)->value, 1);
+    CHECK_EQ(events[2].type, TERM_EV_SUBMIT);
+    CHECK_EQ(events[2].value, 5);
+    CHECK(last_event(TERM_EV_SUBMIT)->panel == p);
+    CHECK_EQ(last_event(TERM_EV_SUBMIT)->value, 1);
 
     draw(ctx);
     CHECK_EQ(ch_at(0, 1), TERM_CH_ARROW_R);
@@ -701,6 +853,7 @@ static void test_input_editing(void) {
     term_ctx_t *ctx = setup();
     term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(1));
     term_make_input(p);
+    term_focus(ctx, p);
 
     static const uint8_t keys[] = {
         sk_1, sk_2, sk_Left, sk_3,  /* "132" */
@@ -711,6 +864,7 @@ static void test_input_editing(void) {
     };
     run_keys(ctx, keys, (int)sizeof keys);
     CHECK_STR(term_input_text(p), "132");
+    CHECK_EQ(count_events(TERM_EV_CHANGE), 5); /* 4 typed + 1 deleted; moves and no-op [del] don't count */
     CHECK_EQ(count_events(TERM_EV_SUBMIT), 1);
     CHECK(last_event(TERM_EV_SUBMIT)->panel == p);
 
@@ -733,6 +887,7 @@ static void test_input_limit_and_scroll(void) {
     term_ctx_t *ctx = setup();
     term_panel_t *p = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(5));
     term_make_input(p);
+    term_focus(ctx, p);
 
     char longer[TERM_INPUT_MAX + 11];
     memset(longer, 'x', sizeof longer - 1);
@@ -767,6 +922,7 @@ static void test_log_ring_and_scrollback(void) {
     term_ctx_t *ctx = setup();
     term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(3));
     term_make_log(p, 5);
+    term_focus(ctx, p);
     for (int i = 0; i < 7; i++) {
         term_log_printf(p, "line %d", i);
     }
@@ -867,12 +1023,18 @@ static const struct {
     TEST(test_glyph_blit),
     TEST(test_flush_only_redraws_changes),
     TEST(test_connected_glyphs_bridge_gaps),
-    TEST(test_focus_order),
-    TEST(test_focus_lost_is_reassigned),
+    TEST(test_output_is_retained),
+    TEST(test_resize_keeps_content),
+    TEST(test_split_panel_has_no_content),
+    TEST(test_keys_are_queued_while_drawing),
+    TEST(test_held_keys_repeat),
+    TEST(test_keys_down_at_start_are_ignored),
+    TEST(test_focus_is_set_by_the_app),
+    TEST(test_focus_lost_is_reported),
     TEST(test_run_start_and_quit),
     TEST(test_key_translation),
     TEST(test_alpha_mode_state),
-    TEST(test_tab_cycles_focus),
+    TEST(test_vars_is_an_ordinary_key),
     TEST(test_tick),
     TEST(test_text_wraps_words),
     TEST(test_list_navigation_and_select),

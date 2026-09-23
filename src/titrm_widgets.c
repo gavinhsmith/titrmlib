@@ -1,5 +1,7 @@
 /* Widgets: panels with built-in content and key handling. Each one draws
- * itself through the same clipped, panel-scoped term_put() the app uses. */
+ * itself into its panel's retained cells through the same clipped term_put()
+ * the app's output uses. Changing a widget's state calls term_panel_touch(),
+ * and the framework redraws it before the next frame. */
 
 #include "titrm_internal.h"
 
@@ -23,6 +25,7 @@ static bool begin_widget(term_panel_t *p, term_kind_t kind, bool focusable) {
     memset(&p->u, 0, sizeof p->u);
     p->kind = kind;
     p->focusable = focusable;
+    term_panel_touch(p);
     return true;
 }
 
@@ -37,6 +40,7 @@ void term_make_text(term_panel_t *p, const char *text) {
 void term_text_set(term_panel_t *p, const char *text) {
     if (p->kind == TERM_KIND_TEXT) {
         p->u.text.text = text;
+        term_panel_touch(p);
     }
 }
 
@@ -105,6 +109,7 @@ void term_list_set_items(term_panel_t *p, const char *const *items, int count) {
         p->u.list.sel = count > 0 ? count - 1 : 0;
     }
     p->u.list.top = 0;
+    term_panel_touch(p);
 }
 
 int term_list_selected(const term_panel_t *p) {
@@ -125,6 +130,7 @@ void term_list_select(term_panel_t *p, int index) {
         index = p->u.list.count - 1;
     }
     p->u.list.sel = index;
+    term_panel_touch(p);
 }
 
 /* Keeps the selected row inside the visible window. */
@@ -190,16 +196,18 @@ static bool list_key(term_panel_t *p, const term_event_t *ev) {
     case TERM_KEY_UP:
         if (count > 0) {
             p->u.list.sel = p->u.list.sel > 0 ? p->u.list.sel - 1 : count - 1;
+            term_emit(p->ctx, TERM_EV_CHANGE, p, p->u.list.sel);
         }
         return true;
     case TERM_KEY_DOWN:
         if (count > 0) {
             p->u.list.sel = p->u.list.sel + 1 < count ? p->u.list.sel + 1 : 0;
+            term_emit(p->ctx, TERM_EV_CHANGE, p, p->u.list.sel);
         }
         return true;
     case TERM_KEY_ENTER:
         if (count > 0) {
-            term_emit(p->ctx, TERM_EV_SELECT, p, p->u.list.sel);
+            term_emit(p->ctx, TERM_EV_SUBMIT, p, p->u.list.sel);
         }
         return true;
     default:
@@ -229,6 +237,7 @@ void term_input_set(term_panel_t *p, const char *text) {
     p->u.input.buf[n] = '\0';
     p->u.input.len = n;
     p->u.input.cur = n;
+    term_panel_touch(p);
 }
 
 static void input_draw(term_panel_t *p) {
@@ -263,6 +272,7 @@ static bool input_key(term_panel_t *p, const term_event_t *ev) {
                     p->u.input.len - p->u.input.cur + 1);
             p->u.input.buf[p->u.input.cur++] = ev->ch;
             p->u.input.len++;
+            term_emit(p->ctx, TERM_EV_CHANGE, p, 0);
         }
         return true;
     case TERM_KEY_DEL:
@@ -271,6 +281,7 @@ static bool input_key(term_panel_t *p, const term_event_t *ev) {
                     p->u.input.len - p->u.input.cur + 1);
             p->u.input.cur--;
             p->u.input.len--;
+            term_emit(p->ctx, TERM_EV_CHANGE, p, 0);
         }
         return true;
     case TERM_KEY_LEFT:
@@ -290,6 +301,7 @@ static bool input_key(term_panel_t *p, const term_event_t *ev) {
         p->u.input.buf[0] = '\0';
         p->u.input.len = 0;
         p->u.input.cur = 0;
+        term_emit(p->ctx, TERM_EV_CHANGE, p, 0);
         return true;
     case TERM_KEY_ENTER:
         term_emit(p->ctx, TERM_EV_SUBMIT, p, 0);
@@ -334,6 +346,7 @@ static void log_add_line(term_panel_t *p, const char *s, int len) {
     if (p->u.log.back > 0 && p->u.log.back < p->u.log.count - 1) {
         p->u.log.back++; /* keep the lines being read where they are */
     }
+    term_panel_touch(p);
 }
 
 void term_log_print(term_panel_t *p, const char *str) {
@@ -368,6 +381,7 @@ void term_log_clear(term_panel_t *p) {
         p->u.log.head = 0;
         p->u.log.count = 0;
         p->u.log.back = 0;
+        term_panel_touch(p);
     }
 }
 
@@ -437,6 +451,7 @@ void term_progress_set(term_panel_t *p, int value) {
         value = p->u.progress.max;
     }
     p->u.progress.value = value;
+    term_panel_touch(p);
 }
 
 static void progress_draw(term_panel_t *p) {

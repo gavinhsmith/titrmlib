@@ -51,12 +51,16 @@ typedef struct {
     unsigned ticks;
 } demo_t;
 
-/* ---- Draw callbacks ------------------------------------------------------ */
+/* ---- Output -------------------------------------------------------------- */
 
-static void draw_title(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    demo_t *d = user;
+/* Panel output is retained, so these rewrite a panel whenever what it shows
+ * may have changed (on_event calls them after every event). */
+
+static void show_title(term_ctx_t *ctx, demo_t *d) {
     static const char spinner[] = "|/-\\";
+    term_panel_t *p = d->title;
 
+    term_panel_clear(p);
     term_panel_set_attr(p, TERM_ATTR_REVERSE);
     term_panel_repeat(p, ' ', term_panel_width(p));
 
@@ -75,11 +79,11 @@ static void draw_title(term_ctx_t *ctx, term_panel_t *p, void *user) {
     }
 }
 
-static void draw_details(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    demo_t *d = user;
+static void show_details(demo_t *d) {
+    term_panel_t *p = d->details;
     const network_t *n = &networks[term_list_selected(d->list)];
 
+    term_panel_clear(p);
     term_panel_printf(p, "SSID:     %s\n", n->ssid);
     term_panel_print(p, "Signal:   ");
     term_panel_putc(p, TERM_CH_SIG0 + n->signal);
@@ -110,6 +114,19 @@ static bool equals_nocase(const char *a, const char *b) {
         }
     }
     return *a == *b;
+}
+
+/* [vars] cycles focus: networks -> command -> log -> networks. */
+static void focus_next(term_ctx_t *ctx, demo_t *d) {
+    term_panel_t *order[] = {d->list, d->input, d->log};
+    term_panel_t *now = term_focused(ctx);
+    int next = 0;
+    for (int i = 0; i < 3; i++) {
+        if (order[i] == now) {
+            next = (i + 1) % 3;
+        }
+    }
+    term_focus(ctx, order[next]);
 }
 
 static void toggle_details(demo_t *d) {
@@ -165,19 +182,19 @@ static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
         }
         break;
 
-    case TERM_EV_SELECT:
+    case TERM_EV_SUBMIT:
         if (ev->panel == d->list) {
             connect_to(d, ev->value);
+        } else {
+            run_command(ctx, d, term_input_text(ev->panel));
+            term_input_set(ev->panel, "");
         }
         break;
 
-    case TERM_EV_SUBMIT:
-        run_command(ctx, d, term_input_text(ev->panel));
-        term_input_set(ev->panel, "");
-        break;
-
     case TERM_EV_KEY:
-        if (ev->key == TERM_KEY_F1) {
+        if (ev->key == TERM_KEY_VARS) {
+            focus_next(ctx, d);
+        } else if (ev->key == TERM_KEY_F1) {
             toggle_details(d);
         } else if (ev->key == TERM_KEY_F2) {
             term_log_clear(d->log);
@@ -185,7 +202,13 @@ static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
             term_quit(ctx, 0);
         }
         break;
+
+    default: /* TERM_EV_CHANGE (the selection moved), TERM_EV_FOCUS_LOST */
+        break;
     }
+
+    show_title(ctx, d);
+    show_details(d);
 }
 
 /* ---- Setup --------------------------------------------------------------- */
@@ -217,15 +240,12 @@ int main(void) {
     d.progress = term_split(status, TERM_HORIZONTAL, TERM_FIXED(16));
     term_panel_t *hints = term_split(status, TERM_HORIZONTAL, TERM_FILL);
 
-    term_panel_set_draw(d.title, draw_title, &d);
-
     term_make_list(d.list, d.items, NUM_NETWORKS);
     term_panel_set_border(d.list, true);
     term_panel_set_title(d.list, "Networks");
 
     term_panel_set_border(d.details, true);
     term_panel_set_title(d.details, "Details");
-    term_panel_set_draw(d.details, draw_details, &d);
 
     term_make_log(d.log, 32);
     term_panel_set_border(d.log, true);
