@@ -10,6 +10,34 @@ of hand-written graphx code for every screen.
 - Public API and usage: [README.md](README.md), [`src/titrm.h`](src/titrm.h)
 - Planned work, known issues, out-of-scope items: [ROADMAP.md](ROADMAP.md)
 
+## Project status
+
+Update this section when a stage finishes or the release state changes.
+
+**Stage 1 (core library): complete as of 2026-09-23.**
+
+- Library: cell grid, 5×7 font, keypad input, `term_run` loop, panel tree,
+  focus and widgets (text, list, input, log, progress). Rendering has been
+  optimized; frame times are in [Performance](#performance-on-the-ez80).
+- Tests: host unit tests (`tests/`) and 7 hardware tests in CEmu's
+  autotester (`tests/hw/`), passing on OS 5.3 and on arTIfiCE-jailbroken
+  OS 5.8.5 ROMs.
+- Docs: API reference built by Doxygen + moxygen into `docs/`, published by
+  GitHub Pages from `main` `/docs` at <https://gavinhsmith.github.io/titrmlib/>.
+- CI (`.github/workflows/ci.yml`): unit tests, generated-file drift (font and
+  docs), and CEdev builds of the examples and hardware tests.
+- Releases (`.github/workflows/release.yml`): pushing a `v*` tag runs CI,
+  checks that `TITRM_VERSION` in `src/titrm.h` matches the tag, and creates a
+  **draft** release with `titrmlib-<tag>.zip` (sources and licenses). The
+  maintainer adds the changes and publishes it.
+
+**Version:** `TITRM_VERSION` is `"0.1.0"`. No tags or releases exist yet.
+
+**Next: stage 2**, not yet scoped. The candidates are under "Planned" in
+[ROADMAP.md](ROADMAP.md): color, a check of the font on a real calculator, and
+Tincan/TINCLIB screens. Color means reworking `draw_cell`'s two-color
+`row_pixels` table.
+
 ## Core rules
 
 - titrmlib owns the whole screen for one program, like curses. It renders the

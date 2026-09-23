@@ -1,6 +1,13 @@
 # titrmlib
 
+[![CI](https://github.com/gavinhsmith/titrmlib/actions/workflows/ci.yml/badge.svg)](https://github.com/gavinhsmith/titrmlib/actions/workflows/ci.yml)
+[![API docs](https://img.shields.io/badge/docs-API%20reference-blue)](https://gavinhsmith.github.io/titrmlib/)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE.md)
+[![Platform: TI-84 Plus CE](https://img.shields.io/badge/platform-TI--84%20Plus%20CE-lightgrey)](https://github.com/CE-Programming/toolchain)
+
 A terminal-style UI framework for the TI-84 Plus CE.
+
+<img src="demo.gif" alt="The demo program: a mock Wi-Fi manager with a network list, details, log, command input and status bar" width="640">
 
 titrmlib takes over the calculator's screen the way curses does on a desktop
 terminal. It draws a 53×30 character grid with its own 5×7 font, reads the
