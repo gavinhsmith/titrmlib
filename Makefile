@@ -44,4 +44,4 @@ hw-record:
 # Removes all build output. Done here rather than with CEdev's clean, whose
 # Windows version silently fails on paths with '/' in them.
 clean:
-	$(PYTHON) -c "import glob, shutil; [shutil.rmtree(d, ignore_errors=True) for d in glob.glob('bin/*/') + ['obj', 'tests/hw/build']]"
+	$(PYTHON) -c "import shutil; [shutil.rmtree(d, ignore_errors=True) for d in ('bin', 'obj', 'tests/hw/build')]"

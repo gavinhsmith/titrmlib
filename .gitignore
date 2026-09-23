@@ -56,8 +56,7 @@ dkms.conf
 
 # TI-84 Plus CE Toolchain (CEdev) build artifacts
 obj/
-bin/*
-!bin/.gitkeep
+bin/
 *.8xp
 *.8xv
 *.8ek
