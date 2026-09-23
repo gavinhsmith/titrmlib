@@ -213,6 +213,36 @@ term_panel_t *term_scene_active(const term_ctx_t *ctx);
 /** @} */
 
 /**
+ * @defgroup overlays Overlays
+ * @brief Panels drawn on top of the active scene, such as dialogs.
+ *
+ * An overlay is a root panel with its own position and size, drawn over the
+ * scene that was active when it opened, and shown only while that scene is.
+ * Overlays are opaque and drawn in the order they were opened, the newest on
+ * top. They aren't modal: focus can move between an overlay and the panels
+ * under it.
+ *
+ * Opening an overlay doesn't move focus; it remembers the panel that had it.
+ * Closing the overlay gives focus back to that panel, but only if focus is in
+ * the overlay or empty, and the panel still exists and is on screen.
+ * @{
+ */
+
+/** @brief Up to this many overlays can be open at once. */
+#define TERM_MAX_OVERLAYS 8
+
+/** @brief Opens an overlay at column `col`, row `row`, `w` by `h` cells (clipped to the grid). NULL if the pool or overlay limit is full. */
+term_panel_t *term_overlay_open(term_ctx_t *ctx, int col, int row, int w, int h);
+
+/** @brief Opens an overlay of `w` by `h` cells, centered on the grid. */
+term_panel_t *term_overlay_open_centered(term_ctx_t *ctx, int w, int h);
+
+/** @brief Closes an overlay, removing it and its panels, and gives focus back as described above. */
+void term_overlay_close(term_panel_t *overlay);
+
+/** @} */
+
+/**
  * @defgroup panels Panel tree
  * @brief Splitting the screen into panels and sizing them.
  * @{
@@ -257,7 +287,12 @@ term_panel_t *term_root(term_ctx_t *ctx);
  */
 term_panel_t *term_split(term_panel_t *parent, term_dir_t dir, term_size_t size);
 
-/** @brief Removes a panel and everything below it. Panel handles become invalid. A scene that isn't active can be removed this way; the active scene and term_root() can't. */
+/**
+ * @brief Removes a panel and everything below it. Panel handles become invalid.
+ *
+ * A scene that isn't active can be removed this way, with its overlays; the
+ * active scene and term_root() can't. Removing an overlay closes it.
+ */
 void term_panel_destroy(term_panel_t *panel);
 
 /** @brief Shows or hides a panel. Hidden panels take no space; siblings reflow. Takes effect next frame. */

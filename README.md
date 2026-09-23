@@ -17,6 +17,7 @@ graphx itself.
 
 - **Panel tree:** split any panel into fixed, percentage or weighted-fill children, nested as deep as you need
 - **Scenes:** several full-screen panel trees, one shown at a time, each with its own event handler
+- **Overlays:** panels drawn on top of a scene, such as dialogs, that give focus back when they close
 - **Clipped output:** each panel has its own cursor, and nothing drawn in it can spill outside it
 - **Focus:** your app decides which panel has focus; the focused widget gets keys first
 - **Widgets:** text, selectable list, text input, scrollback log, progress bar, plus borders and titles
@@ -106,6 +107,13 @@ shows it. Only the active scene is drawn and gets events; the others keep
 their content until you switch back. A scene's handler hears
 `TERM_EV_SCENE_ENTER` and `TERM_EV_SCENE_LEAVE` when it's switched to or away
 from.
+
+**Overlays.** `term_overlay_open(ctx, col, row, w, h)` or
+`term_overlay_open_centered(ctx, w, h)` returns a panel drawn on top of the
+active scene; split it and fill it like any panel. `term_overlay_close()`
+removes it and gives focus back to the panel that had it when the overlay
+opened, if focus was inside the overlay or empty. Overlays aren't modal: your
+app can move focus between an overlay and what's under it.
 
 **Events.** Handlers receive:
 

@@ -1,0 +1,78 @@
+{
+  "transfer_files": [
+    "bin/hw_overlays/TTOVERLY.8xp"
+  ],
+  "target": {
+    "name": "TTOVERLY",
+    "isASM": true
+  },
+  "sequence": [
+    "action|launch",
+    "hashWait|1",
+    "key|zoom",
+    "key|alpha",
+    "key|math",
+    "key|alpha",
+    "key|apps",
+    "hashWait|2",
+    "key|enter",
+    "hashWait|3",
+    "key|zoom",
+    "hashWait|4",
+    "key|clear",
+    "hashWait|3",
+    "key|clear",
+    "hashWait|5"
+  ],
+  "hashes": {
+    "1": {
+      "description": "The list, focused",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "E2D7655A"
+      ]
+    },
+    "2": {
+      "description": "Rename dialog over the list, focus in its input, AB typed",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "F4437DAA"
+      ]
+    },
+    "3": {
+      "description": "Dialog closed: status shows the name, focus back on the list",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "1708B02D"
+      ]
+    },
+    "4": {
+      "description": "Dialog open again, empty",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "F03ED4BA"
+      ]
+    },
+    "5": {
+      "description": "Program exited to a cleared home screen",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_16_size",
+      "expected_CRCs": [
+        "FFAF89BA",
+        "101734A5",
+        "9DA19F44",
+        "A32840C8",
+        "349F4775"
+      ]
+    }
+  }
+}

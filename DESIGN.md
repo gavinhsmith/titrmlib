@@ -149,7 +149,7 @@ the 50 ms goal once step 1 lands.
 | 1. Retained panels, change-based rendering, key queue | Done |
 | 2. Focus and event changes | Done |
 | 3. Scenes | Done |
-| 4. Overlays | Not started |
+| 4. Overlays | Done |
 | 5. Widget set and demo | Not started |
 | 6. Color | Not started |
 
@@ -201,6 +201,25 @@ told about everything that changes what it shows, which is what step 2 adds.
   active; the active scene and `term_root()` can't be destroyed.
 - **The panel pool** (`TERM_MAX_PANELS`, 32) is shared by all scenes. Still
   open, see below.
+
+### Decisions made while building step 4
+
+- **API:** `term_overlay_open(ctx, col, row, w, h)`,
+  `term_overlay_open_centered(ctx, w, h)` and `term_overlay_close(overlay)`.
+  An overlay is a root panel; `term_panel_destroy()` on it closes it.
+- **An overlay belongs to the scene that was active when it opened**, and is
+  shown and can hold focus only while that scene is active. Removing a scene
+  closes its overlays.
+- **Overlays are opaque** and drawn in the order they were opened. Up to
+  `TERM_MAX_OVERLAYS` (8) can be open.
+- **The rectangle is clipped to the grid**; overlays don't move or resize once
+  open (not needed yet).
+- **If the panel an overlay would give focus back to is destroyed** while the
+  overlay is open, the overlay forgets it; closing then leaves focus empty and
+  sends `TERM_EV_FOCUS_LOST` if focus was inside the overlay.
+- **Hardware test runner:** the runner now waits a second after transferring
+  a program before launching it. Launching immediately after a 27 KB transfer
+  dropped the first keys of the `Asm(` launch on the OS 5.3 ROM.
 
 ## Still to decide
 

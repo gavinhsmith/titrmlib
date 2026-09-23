@@ -152,6 +152,7 @@ python tests/hw/run.py --help          # all options
 | `widgets` | List, input and log driven by key presses: wrap-around, `[enter]`, focus moved by the app on `[vars]`, alpha and alpha lock, `[del]`, scrollback |
 | `ticks` | `term_set_tick` with the real `clock()`: 20 ticks of 100 ms arrive on time |
 | `scenes` | Switching between two scenes: each keeps its content and list selection, a scene's handler refocuses on entry, and a hidden scene can be printed into |
+| `overlays` | A centered dialog over a list: focus moved into it, typing, submitting and cancelling, focus given back, and the screen underneath restored exactly |
 | `perf` | Update times when nothing changes, when one row changes and when the whole screen changes stay within budget (the one-row budget is the 50 ms goal); a miss shows the measured time |
 | `selfcheck` | Checks that run on the calculator and read pixels back from the screen: layout, 24-bit `printf`, clipping, the log ring, focus, panel limits |
 

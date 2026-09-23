@@ -32,6 +32,12 @@ struct term_panel {
     term_update_fn handler;
     void *handler_state;
 
+    /* Overlay roots only: the scene they belong to, the panel that had focus
+     * when they opened, and the rectangle asked for. */
+    term_panel_t *owner;
+    term_panel_t *restore;
+    uint8_t req_x, req_y, req_w, req_h;
+
     uint8_t in_use;
     uint8_t visible;
     uint8_t focusable;
@@ -95,6 +101,9 @@ struct term_ctx {
     term_panel_t *root;  /* the first scene, from term_init() */
     term_panel_t *scene; /* the active scene */
     term_panel_t *focus;
+
+    term_panel_t *overlays[TERM_MAX_OVERLAYS]; /* open overlays, bottom to top */
+    uint8_t n_overlays;
 
     term_update_fn update; /* the global handler */
     void *state;

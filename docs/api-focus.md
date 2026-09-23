@@ -24,7 +24,7 @@ Widgets that take input (list, input, log) are focusable by default; any other p
 void term_panel_set_focusable(term_panel_t * panel, bool focusable)
 ```
 
-Defined in src/titrm.h:299
+Defined in src/titrm.h:334
 
 Lets a panel take focus, or stops it.
 
@@ -36,7 +36,7 @@ Lets a panel take focus, or stops it.
 void term_focus(term_ctx_t * ctx, term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:302
+Defined in src/titrm.h:337
 
 Moves focus to `panel`, or clears it with NULL. Ignored for a panel that isn't focusable.
 
@@ -48,7 +48,7 @@ Moves focus to `panel`, or clears it with NULL. Ignored for a panel that isn't f
 term_panel_t * term_focused(const term_ctx_t * ctx)
 ```
 
-Defined in src/titrm.h:305
+Defined in src/titrm.h:340
 
 The focused panel, or NULL.
 

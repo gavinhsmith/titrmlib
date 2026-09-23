@@ -256,16 +256,46 @@ static void free_subtree(term_panel_t *p) {
         p->ctx->focus = NULL;
         p->ctx->focus_lost = 1; /* reported to the app at the next frame */
     }
+    for (int i = 0; i < p->ctx->n_overlays; i++) {
+        if (p->ctx->overlays[i]->restore == p) {
+            p->ctx->overlays[i]->restore = NULL; /* nothing to give focus back to */
+        }
+    }
     term_widget_free(p);
     free_cells(p);
     p->in_use = 0;
 }
 
+static void remove_overlay(term_ctx_t *ctx, term_panel_t *ov) {
+    int j = 0;
+    for (int i = 0; i < ctx->n_overlays; i++) {
+        if (ctx->overlays[i] != ov) {
+            ctx->overlays[j++] = ctx->overlays[i];
+        }
+    }
+    ctx->n_overlays = j;
+}
+
 void term_panel_destroy(term_panel_t *p) {
-    if (!p || p == p->ctx->root || p == p->ctx->scene) {
+    if (!p) {
         return;
     }
-    if (!p->parent) { /* a scene that isn't active */
+    if (p->owner) {
+        term_overlay_close(p);
+        return;
+    }
+    if (p == p->ctx->root || p == p->ctx->scene) {
+        return;
+    }
+    if (!p->parent) { /* a scene that isn't active, and its overlays */
+        term_ctx_t *ctx = p->ctx;
+        for (int i = ctx->n_overlays - 1; i >= 0; i--) {
+            term_panel_t *ov = ctx->overlays[i];
+            if (ov->owner == p) {
+                remove_overlay(ctx, ov);
+                free_subtree(ov);
+            }
+        }
         free_subtree(p);
         return;
     }
@@ -437,10 +467,11 @@ static void relayout(term_ctx_t *ctx) {
     for (int i = 0; i < TERM_MAX_PANELS; i++) {
         term_panel_t *p = &ctx->panels[i];
         if (p->in_use && !p->parent) {
-            p->x = 0;
-            p->y = 0;
-            p->w = TERM_COLS;
-            p->h = TERM_ROWS;
+            bool overlay = p->owner != NULL;
+            p->x = overlay ? p->req_x : 0;
+            p->y = overlay ? p->req_y : 0;
+            p->w = overlay ? p->req_w : TERM_COLS;
+            p->h = overlay ? p->req_h : TERM_ROWS;
             layout(p);
         }
     }
@@ -565,7 +596,8 @@ static bool can_focus(const term_panel_t *p) {
         }
         top = a;
     }
-    return top == p->ctx->scene; /* on screen only in the active scene */
+    /* On screen only in the active scene, or one of its overlays. */
+    return top == p->ctx->scene || top->owner == p->ctx->scene;
 }
 
 void term_panel_set_focusable(term_panel_t *p, bool focusable) {
@@ -813,7 +845,7 @@ term_panel_t *term_scene_new(term_ctx_t *ctx, term_update_fn handler, void *stat
 }
 
 void term_scene_switch(term_ctx_t *ctx, term_panel_t *scene) {
-    if (!scene || scene->parent || scene == ctx->scene) {
+    if (!scene || scene->parent || scene->owner || scene == ctx->scene) {
         return;
     }
     term_panel_t *old = ctx->scene;
@@ -825,6 +857,65 @@ void term_scene_switch(term_ctx_t *ctx, term_panel_t *scene) {
 
 term_panel_t *term_scene_active(const term_ctx_t *ctx) {
     return ctx->scene;
+}
+
+/* ---- Overlays ------------------------------------------------------------ */
+
+static int clamp(int v, int lo, int hi) {
+    return v < lo ? lo : (v > hi ? hi : v);
+}
+
+term_panel_t *term_overlay_open(term_ctx_t *ctx, int col, int row, int w, int h) {
+    if (ctx->n_overlays == TERM_MAX_OVERLAYS) {
+        return NULL;
+    }
+    term_panel_t *p = alloc_panel(ctx);
+    if (!p) {
+        return NULL;
+    }
+    p->owner = ctx->scene;
+    p->restore = ctx->focus;
+    p->req_x = clamp(col, 0, TERM_COLS);
+    p->req_y = clamp(row, 0, TERM_ROWS);
+    p->req_w = clamp(w, 0, TERM_COLS - p->req_x);
+    p->req_h = clamp(h, 0, TERM_ROWS - p->req_y);
+    ctx->overlays[ctx->n_overlays++] = p;
+    ctx->layout_dirty = 1;
+    return p;
+}
+
+term_panel_t *term_overlay_open_centered(term_ctx_t *ctx, int w, int h) {
+    w = clamp(w, 0, TERM_COLS);
+    h = clamp(h, 0, TERM_ROWS);
+    return term_overlay_open(ctx, (TERM_COLS - w) / 2, (TERM_ROWS - h) / 2, w, h);
+}
+
+static term_panel_t *root_of(term_panel_t *p) {
+    while (p->parent) {
+        p = p->parent;
+    }
+    return p;
+}
+
+void term_overlay_close(term_panel_t *ov) {
+    if (!ov || !ov->owner) {
+        return;
+    }
+    term_ctx_t *ctx = ov->ctx;
+    term_panel_t *back = ov->restore;
+    bool give_back = back && (!ctx->focus || root_of(ctx->focus) == ov);
+
+    remove_overlay(ctx, ov);
+    free_subtree(ov);
+    ctx->layout_dirty = 1;
+
+    if (give_back) {
+        ensure_layout(ctx);
+        if (can_focus(back)) {
+            ctx->focus_lost = 0; /* focus moved back, not lost */
+            set_focus(ctx, back);
+        }
+    }
 }
 
 /* Lays out (if the tree changed), composes the retained content and pushes
@@ -854,6 +945,15 @@ static void frame(term_ctx_t *ctx) {
         memcpy(grid_row[r], blank_row, sizeof blank_row);
     }
     compose(ctx->scene);
+    for (int i = 0; i < ctx->n_overlays; i++) {
+        term_panel_t *ov = ctx->overlays[i];
+        if (ov->owner == ctx->scene && ov->visible) {
+            for (int r = ov->y; r < ov->y + ov->h; r++) { /* opaque */
+                memcpy(&grid_row[r][ov->x], blank_row, ov->w * sizeof(term_cell_t));
+            }
+            compose(ov);
+        }
+    }
     flush(ctx);
 }
 

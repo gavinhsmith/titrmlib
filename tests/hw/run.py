@@ -187,10 +187,12 @@ def run_test(name, autotester, env, launch):
     # The committed config names the program by target; point it at the build.
     resolved = dict(config)
     resolved["transfer_files"] = [program_path(name, config)]
-    if launch == "artifice":
-        steps = artifice_launch(config["target"]["name"])
-        resolved["sequence"] = [x for step in config["sequence"]
-                                for x in (steps if step == "action|launch" else [step])]
+    # Launching right after a large transfer can drop the first keys the
+    # launch types (seen with a 27 KB program), so wait a second first.
+    steps = ["delay|1000"]
+    steps += artifice_launch(config["target"]["name"]) if launch == "artifice" else ["action|launch"]
+    resolved["sequence"] = [x for step in config["sequence"]
+                            for x in (steps if step == "action|launch" else [step])]
     config_path = os.path.join(work, "autotest.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(resolved, f, indent=2)

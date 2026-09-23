@@ -40,7 +40,7 @@ The font and icons have been checked on a real TI-84 Plus CE.
 **Phase 2: in progress on the `phase-2` branch.** The design, build order and
 progress are in [DESIGN.md](DESIGN.md). Done: retained panels and
 change-based rendering, the key queue (keypadc input), app-driven focus,
-the new events, and scenes. Next: overlays, the revised widget set, color.
+the new events, scenes and overlays. Next: the revised widget set, color.
 Breaking API changes are fine until v1.0. Follow DESIGN.md's build order, and
 update it if a decision changes during implementation.
 
@@ -87,6 +87,11 @@ update it if a decision changes during implementation.
   `ctx->scene` the active one; only it is composed and gets events. Layout
   covers every scene, so hidden scenes can be printed into. A scene root keeps
   its handler in `handler`/`handler_state`.
+- **Overlays:** root panels with an `owner` scene and their own rect
+  (`req_*`), kept bottom to top in `ctx->overlays`. A frame composes the
+  active scene, then its overlays in order, each over a blanked rect. Closing
+  gives focus back to `restore` under the rules in `titrm.h`; freeing a panel
+  clears any `restore` that points at it.
 - **Events:** keys go to the focused widget, then `dispatch()`: the active
   scene's handler, then the global one, stopping at the first that returns
   true. Scene enter/leave go only to that scene's handler.
@@ -100,9 +105,9 @@ update it if a decision changes during implementation.
   and content rect (`ix iy iw ih`). `term_put` and `term_panel_putc` read the
   content rect for every character.
 - **Focus** is set only by the app (`term_focus`, focusable panels only).
-  titrmlib never moves it, except to clear it when the focused panel is
-  hidden, destroyed or no longer in the active scene, which sends
-  `TERM_EV_FOCUS_LOST`. `[vars]` is an
+  titrmlib only moves it to give it back when an overlay closes, and to clear
+  it when the focused panel is hidden, destroyed or no longer in the active
+  scene (or one of its overlays), which sends `TERM_EV_FOCUS_LOST`. `[vars]` is an
   ordinary key, `TERM_KEY_VARS`.
 - **Input:** the keypad is read with keypadc (`kb_Scan`, ~1.3 ms), not
   `os_GetCSC` (~19 ms per call). `poll_keys` finds new presses by comparing

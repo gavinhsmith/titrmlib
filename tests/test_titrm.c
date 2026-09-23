@@ -1142,6 +1142,160 @@ static void test_scene_destroy(void) {
     CHECK_EQ(used, 1);
 }
 
+/* ---- Overlays ------------------------------------------------------------ */
+
+static void test_overlay_draws_on_top(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *under = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    for (int i = 0; i < TERM_ROWS; i++) {
+        term_panel_move(under, 0, i);
+        term_panel_repeat(under, '.', TERM_COLS);
+    }
+    term_panel_t *ov = term_overlay_open(ctx, 10, 5, 8, 3);
+    CHECK(ov != NULL);
+    term_panel_set_border(ov, true);
+    term_panel_print(ov, "hi");
+    draw(ctx);
+
+    CHECK_EQ(ch_at(10, 5), TERM_CH_TL);
+    CHECK_STR(text_at(11, 6, 6), "hi    "); /* opaque: no dots show through */
+    CHECK_EQ(ch_at(17, 7), TERM_CH_BR);
+    CHECK_EQ(ch_at(9, 6), '.');
+    CHECK_EQ(ch_at(18, 6), '.');
+
+    term_overlay_close(ov);
+    draw(ctx);
+    CHECK_STR(text_at(10, 6, 8), "........"); /* the retained content is back */
+}
+
+static void test_overlay_position(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *ov = term_overlay_open_centered(ctx, 21, 10);
+    CHECK_EQ(term_panel_width(ov), 21);
+    CHECK_EQ(ov->x, (TERM_COLS - 21) / 2);
+    CHECK_EQ(ov->y, (TERM_ROWS - 10) / 2);
+
+    term_panel_t *edge = term_overlay_open(ctx, 50, 28, 10, 10); /* clipped */
+    CHECK_EQ(term_panel_width(edge), TERM_COLS - 50);
+    CHECK_EQ(term_panel_height(edge), TERM_ROWS - 28);
+}
+
+static void test_overlay_gives_focus_back(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *list = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_panel_t *other = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_make_list(list, items, 6);
+    term_make_input(other);
+    term_focus(ctx, list);
+
+    /* Opening doesn't move focus; the app moves it in and types there. */
+    term_panel_t *ov = term_overlay_open_centered(ctx, 20, 3);
+    term_panel_t *field = term_split(ov, TERM_VERTICAL, TERM_FILL);
+    term_make_input(field);
+    CHECK(term_focused(ctx) == list);
+    term_focus(ctx, field);
+    static const uint8_t keys[] = {sk_1};
+    run_keys(ctx, keys, 1);
+    CHECK_STR(term_input_text(field), "1");
+
+    /* Closing while focus is inside: focus goes back to the list. */
+    term_overlay_close(ov);
+    CHECK(term_focused(ctx) == list);
+    run_keys(ctx, NULL, 0);
+    CHECK_EQ(count_events(TERM_EV_FOCUS_LOST), 0);
+
+    /* The app moved focus elsewhere before closing: left alone. */
+    ov = term_overlay_open_centered(ctx, 20, 3);
+    term_focus(ctx, other);
+    term_overlay_close(ov);
+    CHECK(term_focused(ctx) == other);
+
+    /* Focus was empty: the remembered panel gets it back. */
+    ov = term_overlay_open_centered(ctx, 20, 3);
+    term_focus(ctx, NULL);
+    term_overlay_close(ov);
+    CHECK(term_focused(ctx) == other);
+
+    /* The remembered panel went away: nothing to give back, focus is lost. */
+    ov = term_overlay_open_centered(ctx, 20, 3);
+    field = term_split(ov, TERM_VERTICAL, TERM_FILL);
+    term_make_input(field);
+    term_focus(ctx, field);
+    term_panel_destroy(other);
+    term_overlay_close(ov);
+    CHECK(term_focused(ctx) == NULL);
+    run_keys(ctx, NULL, 0);
+    CHECK_EQ(count_events(TERM_EV_FOCUS_LOST), 1);
+}
+
+static void test_overlays_stack(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *list = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_make_list(list, items, 6);
+    term_focus(ctx, list);
+
+    term_panel_t *first = term_overlay_open(ctx, 0, 0, 10, 3);
+    term_panel_t *a = term_split(first, TERM_VERTICAL, TERM_FILL);
+    term_make_input(a);
+    term_focus(ctx, a);
+    term_panel_t *second = term_overlay_open(ctx, 5, 1, 10, 3);
+    term_panel_t *b = term_split(second, TERM_VERTICAL, TERM_FILL);
+    term_make_input(b);
+    term_focus(ctx, b);
+    term_input_set(a, "AAAAAAAAAA"); /* inputs draw on their first row */
+    term_input_set(b, "BBBBBBBBBB");
+    draw(ctx);
+    CHECK_EQ(ch_at(5, 0), 'A');
+    CHECK_EQ(ch_at(5, 1), 'B'); /* the newer overlay is on top of the older */
+    CHECK_EQ(ch_at(4, 1), 0);   /* and the older one is opaque */
+
+    term_overlay_close(second);
+    CHECK(term_focused(ctx) == a);
+    term_overlay_close(first);
+    CHECK(term_focused(ctx) == list);
+
+    for (int i = 0; i < TERM_MAX_OVERLAYS; i++) {
+        CHECK(term_overlay_open(ctx, 0, 0, 1, 1) != NULL);
+    }
+    CHECK(term_overlay_open(ctx, 0, 0, 1, 1) == NULL); /* the limit */
+}
+
+static void test_overlays_belong_to_a_scene(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *ov = term_overlay_open(ctx, 0, 0, 5, 1);
+    term_panel_print(ov, "OVER");
+    term_panel_t *input = term_split(ov, TERM_VERTICAL, TERM_FILL);
+    term_panel_destroy(input); /* splitting then removing: ov is a leaf again */
+    term_panel_print(ov, "OVER");
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 4), "OVER");
+
+    term_panel_t *other = term_scene_new(ctx, NULL, NULL);
+    term_scene_switch(ctx, other);
+    draw(ctx);
+    CHECK(row_blank(0, 0, TERM_COLS)); /* not shown over another scene */
+    CHECK(term_scene_active(ctx) == other);
+    term_scene_switch(ctx, ov); /* an overlay is not a scene */
+    CHECK(term_scene_active(ctx) == other);
+
+    term_scene_switch(ctx, term_root(ctx));
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 4), "OVER");
+
+    /* Removing a scene closes its overlays. */
+    term_scene_switch(ctx, other);
+    term_panel_t *mine = term_overlay_open(ctx, 0, 0, 3, 3);
+    term_split(mine, TERM_VERTICAL, TERM_FILL);
+    term_scene_switch(ctx, term_root(ctx));
+    term_panel_destroy(other);
+    CHECK_EQ(ctx->n_overlays, 1);
+    int used = 0;
+    for (int i = 0; i < TERM_MAX_PANELS; i++) {
+        used += ctx->panels[i].in_use;
+    }
+    CHECK_EQ(used, 2); /* root and the first overlay */
+}
+
 /* ---- Lifecycle ----------------------------------------------------------- */
 
 static void test_init_and_shutdown(void) {
@@ -1205,6 +1359,11 @@ static const struct {
     TEST(test_scene_enter_and_leave),
     TEST(test_scene_switch_loses_focus),
     TEST(test_scene_destroy),
+    TEST(test_overlay_draws_on_top),
+    TEST(test_overlay_position),
+    TEST(test_overlay_gives_focus_back),
+    TEST(test_overlays_stack),
+    TEST(test_overlays_belong_to_a_scene),
     TEST(test_init_and_shutdown),
 };
 
