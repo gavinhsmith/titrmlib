@@ -28,6 +28,16 @@ extern "C" {
 #endif
 
 /**
+ * @defgroup version Version
+ * @{
+ */
+
+/** @brief titrmlib's version, matching the release tag without the "v" (e.g. "1.0.0"). */
+#define TITRM_VERSION "0.1.0"
+
+/** @} */
+
+/**
  * @defgroup types Handles
  * @brief Opaque handles passed to every call.
  * @{

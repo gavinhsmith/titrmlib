@@ -17,7 +17,7 @@
 #define TERM_MAX_PANELS 32
 ```
 
-Defined in src/titrm.h:50
+Defined in src/titrm.h:60
 
 Panels available, including the root.
 
@@ -29,7 +29,7 @@ Panels available, including the root.
 #define TERM_INPUT_MAX 48
 ```
 
-Defined in src/titrm.h:53
+Defined in src/titrm.h:63
 
 Longest text an input widget can hold.
 

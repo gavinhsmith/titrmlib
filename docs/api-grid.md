@@ -19,7 +19,7 @@ The character grid and cell attributes.
 #define TERM_ATTR_NORMAL 0
 ```
 
-Defined in src/titrm.h:70
+Defined in src/titrm.h:80
 
 Cell attribute for [term_panel_set_attr()](api-output.md#term_panel_set_attr): normal video.
 
@@ -31,7 +31,7 @@ Cell attribute for [term_panel_set_attr()](api-output.md#term_panel_set_attr): n
 #define TERM_ATTR_REVERSE 1
 ```
 
-Defined in src/titrm.h:73
+Defined in src/titrm.h:83
 
 Cell attribute for [term_panel_set_attr()](api-output.md#term_panel_set_attr): inverse video, the only "style" for now.
 
@@ -50,7 +50,7 @@ Cell attribute for [term_panel_set_attr()](api-output.md#term_panel_set_attr): i
 int term_cols(void)
 ```
 
-Defined in src/titrm.h:64
+Defined in src/titrm.h:74
 
 Grid width in cells: 53 with the built-in 5x7 font (6x8 cells).
 
@@ -62,7 +62,7 @@ Grid width in cells: 53 with the built-in 5x7 font (6x8 cells).
 int term_rows(void)
 ```
 
-Defined in src/titrm.h:67
+Defined in src/titrm.h:77
 
 Grid height in cells: 30 with the built-in 5x7 font (6x8 cells).
 

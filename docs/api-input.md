@@ -25,7 +25,7 @@ Keys and the events delivered to the app.
 enum term_key_t
 ```
 
-Defined in src/titrm.h:84
+Defined in src/titrm.h:94
 
 Keys, as delivered in [term_event_t.key](#key).
 
@@ -57,7 +57,7 @@ Keys, as delivered in [term_event_t.key](#key).
 enum term_event_type_t
 ```
 
-Defined in src/titrm.h:105
+Defined in src/titrm.h:115
 
 Kinds of event passed to the update function.
 
@@ -82,7 +82,7 @@ Kinds of event passed to the update function.
 using term_update_fn = void(*)
 ```
 
-Defined in src/titrm.h:123
+Defined in src/titrm.h:133
 
 Called for every event the framework does not handle itself.
 
@@ -100,7 +100,7 @@ Called for every event the framework does not handle itself.
 int term_alpha_mode(const term_ctx_t * ctx)
 ```
 
-Defined in src/titrm.h:130
+Defined in src/titrm.h:140
 
 Alpha state, for status displays: 0 = off, 1 = next key only, 2 = locked.
 
@@ -121,7 +121,7 @@ Alpha state, for status displays: 0 = off, 1 = next key only, 2 = locked.
 struct term_event_t
 ```
 
-Defined in src/titrm.h:114
+Defined in src/titrm.h:124
 
 An event passed to the update function.
 
@@ -145,7 +145,7 @@ term_event_type_t type
 
 Type: [`term_event_type_t`](#term_event_type_t)
 
-Defined in src/titrm.h:115
+Defined in src/titrm.h:125
 
 what happened
 
@@ -159,7 +159,7 @@ term_key_t key
 
 Type: [`term_key_t`](#term_key_t)
 
-Defined in src/titrm.h:116
+Defined in src/titrm.h:126
 
 TERM_EV_KEY
 
@@ -171,7 +171,7 @@ TERM_EV_KEY
 char ch
 ```
 
-Defined in src/titrm.h:117
+Defined in src/titrm.h:127
 
 TERM_EV_KEY with TERM_KEY_CHAR: typed character
 
@@ -185,7 +185,7 @@ term_panel_t * panel
 
 Type: [`term_panel_t`](api-types.md#term_panel_t) *
 
-Defined in src/titrm.h:118
+Defined in src/titrm.h:128
 
 widget events: the source. key events: focused panel
 
@@ -197,7 +197,7 @@ widget events: the source. key events: focused panel
 int value
 ```
 
-Defined in src/titrm.h:119
+Defined in src/titrm.h:129
 
 TERM_EV_SELECT: item index
 

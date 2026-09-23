@@ -11,6 +11,7 @@
 | [`Limits`](api-limits.md#limits) |  |
 | [`Panel tree`](api-panels.md#paneltree) | Splitting the screen into panels and sizing them. |
 | [`Panel-scoped output`](api-output.md#panel-scopedoutput) | Drawing text into a panel. |
+| [`Version`](api-version.md#version) |  |
 | [`Widgets`](api-widgets.md#widgets) | Panels with built-in content and key handling. |
 | [`Lifecycle`](api-lifecycle.md#lifecycle) | Starting, running and stopping the framework. |
 

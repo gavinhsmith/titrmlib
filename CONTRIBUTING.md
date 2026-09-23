@@ -11,6 +11,10 @@ You need:
   standard library is used.
 - A host C compiler (gcc or clang) for the unit tests. On Windows,
   [MSYS2](https://www.msys2.org/) provides one: `pacman -S mingw-w64-ucrt-x86_64-gcc`.
+  Put `C:\msys64\ucrt64\bin` **above** `C:\Program Files\Git\mingw64\bin` in
+  your `PATH`. Git ships older copies of DLLs that gcc loads, and if Git's
+  folder comes first, gcc fails without printing an error. Git Bash always puts
+  its own folder first, so run the unit tests from PowerShell or cmd.
 - For the API docs only: [Doxygen](https://www.doxygen.nl/) 1.18.0 on `PATH`
   (on Windows: `winget install DimitriVanHeesch.Doxygen`) and
   [Node.js](https://nodejs.org/), which runs moxygen through `npx`.
@@ -188,14 +192,16 @@ them locally when you change rendering, input or timing.
 
 ## Releasing
 
-Push a version tag to the commit being released:
+Set `TITRM_VERSION` in `src/titrm.h` to the new version (without the `v`),
+run `make docs`, and commit. Then push a version tag to that commit:
 
 ```sh
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
-`.github/workflows/release.yml` runs CI, then creates a **draft** release named
+`.github/workflows/release.yml` fails if `TITRM_VERSION` doesn't match the tag.
+Otherwise it runs CI, then creates a **draft** release named
 after the tag. It attaches `titrmlib-<tag>.zip`, which holds `src/*.c`,
 `src/*.h` and the licenses, and a short "how to use" description. Add the
 changes to the description on GitHub, then publish the draft.
