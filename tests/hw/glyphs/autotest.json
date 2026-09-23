@@ -19,7 +19,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "1DEDD529"
+        "4685C955"
       ]
     },
     "2": {

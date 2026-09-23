@@ -95,7 +95,7 @@ int main(void) {
     term_make_text(text,
                    "The quick brown fox jumps over the lazy dog. "
                    "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.\n"
-                   "0123456789 !\"#$%&'()*+,-./:;<=>?@[\]^_`{|}~\n"
+                   "0123456789 !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~\n"
                    "  Indented, then a word too long for one line: "
                    "Supercalifragilisticexpialidocious-and-then-some-more-letters.");
 
