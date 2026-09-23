@@ -22,8 +22,18 @@
     "hashWait|4",
     "key|enter",
     "hashWait|5",
+    "key|right",
+    "key|enter",
+    "hashWait|6",
+    "key|up",
+    "key|up",
+    "hashWait|7",
+    "key|down",
+    "key|down",
+    "key|down",
+    "hashWait|8",
     "key|clear",
-    "hashWait|6"
+    "hashWait|9"
   ],
   "hashes": {
     "1": {
@@ -50,7 +60,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "27ACD821"
+        "361F4298"
       ]
     },
     "4": {
@@ -72,6 +82,33 @@
       ]
     },
     "6": {
+      "description": "[right] moved focus to Cancel, [enter] submitted it",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "83034CC6"
+      ]
+    },
+    "7": {
+      "description": "[up] twice: from the buttons to the counter, then to the second checkbox",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "72632C49"
+      ]
+    },
+    "8": {
+      "description": "[down] three times: counter, OK, then stays on OK",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "3C8ABD01"
+      ]
+    },
+    "9": {
       "description": "Program exited to a cleared home screen",
       "timeout": 5000,
       "start": "vram_start",

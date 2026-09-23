@@ -150,7 +150,7 @@ python tests/hw/run.py --help          # all options
 | `glyphs` | Every character code, reverse video, box-drawing joins, word wrap |
 | `layout` | Fixed, percent and weighted-fill sizes, nesting, clipping, hide/show reflow, destroying a subtree |
 | `colors` | Every `TERM_COLOR_*`, and a colored bordered box with a list, checkbox and button inheriting its colors, and focus moving between them with [vars] and the arrows |
-| `controls` | Checkboxes, a custom widget built with a key handler, and buttons: toggling, custom change events, focus markers, submitting |
+| `controls` | Checkboxes, a custom widget built with a key handler, and buttons: toggling, custom change events, focus markers, submitting, moving focus with [vars] and the arrows |
 | `widgets` | List, input and a text log driven by key presses: wrap-around, `[enter]`, focus moved by the app on `[vars]`, alpha and alpha lock, `[del]`, scrollback |
 | `ticks` | `term_set_tick` with the real `clock()`: 20 ticks of 100 ms arrive on time |
 | `scenes` | Switching between two scenes: each keeps its content and list selection, a scene's handler refocuses on entry, and a hidden scene can be printed into |
