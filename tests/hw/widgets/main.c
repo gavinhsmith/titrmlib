@@ -63,14 +63,14 @@ static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     switch (ev->type) {
     case TERM_EV_START:
         for (int i = 1; i <= 30; i++) {
-            term_log_printf(app->log, "boot line %d", i);
+            term_text_appendf(app->log, "boot line %d\n", i);
         }
         break;
     case TERM_EV_SUBMIT:
         if (ev->panel == app->list) {
-            term_log_printf(app->log, "select %d (%s)", ev->value, app->items[ev->value]);
+            term_text_appendf(app->log, "select %d (%s)\n", ev->value, app->items[ev->value]);
         } else {
-            term_log_printf(app->log, "submit \"%s\"", term_input_text(ev->panel));
+            term_text_appendf(app->log, "submit \"%s\"\n", term_input_text(ev->panel));
             term_input_set(ev->panel, "");
         }
         break;
@@ -81,7 +81,7 @@ static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
         } else if (ev->key == TERM_KEY_VARS) {
             focus_next(ctx, app);
         } else if (ev->key != TERM_KEY_ALPHA) {
-            term_log_printf(app->log, "key %d from %s", (int)ev->key, focus_name(app, ev->panel));
+            term_text_appendf(app->log, "key %d from %s\n", (int)ev->key, focus_name(app, ev->panel));
         }
         break;
     default: /* TERM_EV_CHANGE: the footer shows the new value */
@@ -121,7 +121,9 @@ int main(void) {
     term_make_input(app.input);
     term_panel_set_border(app.log, true);
     term_panel_set_title(app.log, "Log");
-    term_make_log(app.log, 50);
+    term_make_text(app.log, "");
+    term_text_autoscroll(app.log, true);
+    term_panel_set_focusable(app.log, true);
 
     term_focus(ctx, app.list);
 

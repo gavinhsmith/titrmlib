@@ -202,6 +202,7 @@ static term_panel_t *alloc_panel(term_ctx_t *ctx) {
             p->in_use = 1;
             p->visible = 1;
             p->size = TERM_FILL;
+            p->focus_attr = TERM_ATTR_REVERSE;
             return p;
         }
     }
@@ -504,6 +505,7 @@ static void put_abs(int col, int row, uint8_t ch, uint8_t attr) {
 }
 
 static void draw_border(const term_panel_t *p, bool focused) {
+    uint8_t title_attr = focused ? p->focus_attr : TERM_ATTR_NORMAL;
     if (p->w < 2 || p->h < 2) {
         return;
     }
@@ -525,15 +527,14 @@ static void draw_border(const term_panel_t *p, bool focused) {
     put_abs(x0, y1, TERM_CH_BL, TERM_ATTR_NORMAL);
     put_abs(x1, y1, TERM_CH_BR, TERM_ATTR_NORMAL);
 
-    /* " Title " set into the top edge; reversed when the panel has focus. */
+    /* " Title " set into the top edge, in the focus attribute while focused. */
     if (p->title) {
-        uint8_t attr = focused ? TERM_ATTR_REVERSE : TERM_ATTR_NORMAL;
         int x = x0 + 2;
-        put_abs(x - 1, y0, ' ', attr);
+        put_abs(x - 1, y0, ' ', title_attr);
         for (const char *s = p->title; *s && x < x1 - 1; s++, x++) {
-            put_abs(x, y0, (uint8_t)*s, attr);
+            put_abs(x, y0, (uint8_t)*s, title_attr);
         }
-        put_abs(x, y0, ' ', attr);
+        put_abs(x, y0, ' ', title_attr);
     }
 }
 
@@ -630,6 +631,30 @@ void term_panel_move(term_panel_t *p, int col, int row) {
 
 void term_panel_set_attr(term_panel_t *p, uint8_t attr) {
     p->attr = attr;
+    term_panel_touch(p); /* widgets draw in it */
+}
+
+void term_panel_set_focus_attr(term_panel_t *p, uint8_t attr) {
+    p->focus_attr = attr;
+    term_panel_touch(p);
+}
+
+void term_panel_set_align(term_panel_t *p, term_align_t align) {
+    p->align = align;
+    term_panel_touch(p);
+}
+
+void term_panel_set_submit(term_panel_t *p, bool submit) {
+    p->submit = submit;
+}
+
+void term_panel_set_keys(term_panel_t *p, term_key_fn fn, void *state) {
+    p->key_fn = fn;
+    p->key_state = state;
+}
+
+void term_panel_send(term_panel_t *p, term_event_type_t type, int value) {
+    term_emit(p->ctx, type, p, value);
 }
 
 void term_panel_wrap(term_panel_t *p, bool wrap) {
@@ -823,11 +848,23 @@ static void emit_scene(term_ctx_t *ctx, term_panel_t *scene, term_event_type_t t
     }
 }
 
-/* A key goes to the focused widget first, then along the handler chain. */
+/* A key goes to the focused panel first (its custom key handler, then its
+ * widget, then [enter] as a submit if it has that set), then along the
+ * handler chain. */
 static void dispatch_key(term_ctx_t *ctx, const term_event_t *ev) {
-    if (ctx->focus && term_widget_key(ctx->focus, ev)) {
-        term_panel_touch(ctx->focus);
-        return;
+    term_panel_t *p = ctx->focus;
+    if (p) {
+        if (p->key_fn && p->key_fn(p, ev, p->key_state)) {
+            return;
+        }
+        if (term_widget_key(p, ev)) {
+            term_panel_touch(p);
+            return;
+        }
+        if (p->submit && ev->key == TERM_KEY_ENTER) {
+            term_emit(ctx, TERM_EV_SUBMIT, p, 0);
+            return;
+        }
     }
     dispatch(ctx, ev);
 }

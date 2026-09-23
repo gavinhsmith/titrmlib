@@ -22,6 +22,7 @@ HW_NAME_selfcheck = TTSELFCK
 HW_NAME_perf = TTPERF
 HW_NAME_scenes = TTSCENES
 HW_NAME_overlays = TTOVERLY
+HW_NAME_controls = TTCONTRL
 
 ifeq ($(EXAMPLE),demo)
 NAME = TITRMDEM

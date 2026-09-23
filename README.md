@@ -20,7 +20,7 @@ graphx itself.
 - **Overlays:** panels drawn on top of a scene, such as dialogs, that give focus back when they close
 - **Clipped output:** each panel has its own cursor, and nothing drawn in it can spill outside it
 - **Focus:** your app decides which panel has focus; the focused widget gets keys first
-- **Widgets:** text, selectable list, text input, scrollback log, progress bar, plus borders and titles
+- **Widgets:** text (with scrolling and auto-scroll, for logs), list, input, button, checkbox, progress bar, plus borders and titles; build your own with a key handler
 - **Glyphs:** box-drawing characters and small status icons (check marks, signal bars, arrows) alongside ASCII
 - **Ticks:** timed events for animation and polling
 
@@ -98,8 +98,19 @@ are redrawn. Output is clipped to the panel's content area, and only panels
 without children hold content.
 
 **Widgets** turn a panel into one with built-in content and key handling:
-`term_make_text`, `term_make_list`, `term_make_input`, `term_make_log` and
-`term_make_progress`. Any panel can also have a border and a title.
+`term_make_text`, `term_make_button`, `term_make_checkbox`, `term_make_list`,
+`term_make_input` and `term_make_progress`. A text widget copies its text and
+can grow with `term_text_append`; with `term_text_autoscroll` it follows the
+end, which makes it a log. A panel that holds other panels is a container:
+give it a border and title with `term_panel_set_border` and
+`term_panel_set_title`.
+
+Widgets draw in the panel's attribute (`term_panel_set_attr`) and show focus
+with its focus attribute (`term_panel_set_focus_attr`); text can be centered
+with `term_panel_set_align`. To build your own widget, make a panel
+focusable, give it a key handler with `term_panel_set_keys`, print its
+content, and report changes with `term_panel_send(panel, TERM_EV_CHANGE,
+value)`.
 
 **Scenes.** `term_root(ctx)` is the first scene. `term_scene_new(ctx,
 handler, state)` creates another full-screen scene, and `term_scene_switch`
@@ -119,8 +130,8 @@ app can move focus between an overlay and what's under it.
 
 - `TERM_EV_START`, once before the first frame
 - `TERM_EV_KEY`, for keys the focused widget didn't use
-- `TERM_EV_SUBMIT`, when the user confirms with `[enter]`: an input, or a list item (`value` is its index)
-- `TERM_EV_CHANGE`, when the user changes a widget: moves a list selection or edits an input
+- `TERM_EV_SUBMIT`, when the user confirms with `[enter]`: an input, a button, or a list item (`value` is its index)
+- `TERM_EV_CHANGE`, when the user changes a widget: moves a list selection, edits an input, or toggles a checkbox
 - `TERM_EV_FOCUS_LOST`, when the focused panel is hidden or destroyed
 - `TERM_EV_TICK`, every interval set with `term_set_tick(ctx, ms)`
 
@@ -131,8 +142,9 @@ which stops it there.
 **Focus.** Your app moves focus with `term_focus(ctx, panel)`; nothing is
 focused until it does, and titrmlib never moves it on its own. `[vars]` is an
 ordinary key (`TERM_KEY_VARS`), so you can use it to cycle focus, as the demo
-does. Switching scenes clears focus if it was on the old scene. Input, list and log widgets are focusable; other panels opt in with
-`term_panel_set_focusable`.
+does. Switching scenes clears focus if it was on the old scene. Input, list,
+button and checkbox widgets are focusable; other panels, such as a text log
+that should scroll, opt in with `term_panel_set_focusable`.
 
 **Keys.** `[alpha]` types one upper-case letter and `[2nd][alpha]` locks
 alpha; `[alpha]` itself arrives as `TERM_KEY_ALPHA`, and `term_alpha_mode()`

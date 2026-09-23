@@ -151,7 +151,7 @@ static void run_checks(term_ctx_t *ctx, app_t *app) {
     check("screen: text clipped to panel", text_at(1, 5, "XXXXXXXX", false));
     check("screen: nothing leaks to sibling", blank_rect(10, 4, 10, 5));
     check("screen: reverse video", text_at(20, 4, "REV", true) && cell_is(23, 4, ' ', false));
-    check("screen: log keeps newest 200",
+    check("screen: text follows its end",
           text_at(0, 28, "line 250", false) && text_at(0, 9, "line 231", false));
     check("screen: progress 999/1000",
           cell_is(52, 29, TERM_CH_SHADE, false) && !cell_is(51, 29, TERM_CH_SHADE, false));
@@ -190,7 +190,7 @@ static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     switch (ev->type) {
     case TERM_EV_START:
         for (int i = 1; i <= 250; i++) {
-            term_log_printf(app->log, "line %d", i);
+            term_text_appendf(app->log, "line %d\n", i);
         }
         term_set_tick(ctx, 10); /* checks run after the first frame is drawn */
         break;
@@ -242,7 +242,9 @@ int main(void) {
     print_reverse(rev);
 
     app.log = term_split(root, TERM_VERTICAL, TERM_FILL);
-    term_make_log(app.log, 200);
+    term_make_text(app.log, "");
+    term_text_limit(app.log, 2000); /* fewer than 250 lines fit */
+    term_text_autoscroll(app.log, true);
 
     app.progress = term_split(root, TERM_VERTICAL, TERM_FIXED(1));
     term_make_progress(app.progress, 1000);

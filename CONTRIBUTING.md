@@ -31,7 +31,7 @@ You need:
 | `src/` | The library. `titrm.h` is the whole public API |
 | `src/FONT.md` | Character code → glyph → purpose table (generated) |
 | `examples/hello/` | The smallest useful program |
-| `examples/demo/` | A mock Wi-Fi manager using every feature |
+| `examples/demo/` | A mock Wi-Fi manager using every feature: scenes, an overlay dialog with buttons, a log |
 | `docs/` | API reference (generated) |
 | `Doxyfile` | Doxygen settings for the API docs |
 | `tools/gen_font.py` | Converts `tools/petabyt-font/font.h` into `src/titrm_font.c`, `src/titrm_chars.h` and `src/FONT.md` |
@@ -149,7 +149,8 @@ python tests/hw/run.py --help          # all options
 | `canary` | Only the setup: a graphx program launches and exits. If it fails, check the ROM first |
 | `glyphs` | Every character code, reverse video, box-drawing joins, word wrap |
 | `layout` | Fixed, percent and weighted-fill sizes, nesting, clipping, hide/show reflow, destroying a subtree |
-| `widgets` | List, input and log driven by key presses: wrap-around, `[enter]`, focus moved by the app on `[vars]`, alpha and alpha lock, `[del]`, scrollback |
+| `controls` | Checkboxes, a custom widget built with a key handler, and buttons: toggling, custom change events, focus markers, submitting |
+| `widgets` | List, input and a text log driven by key presses: wrap-around, `[enter]`, focus moved by the app on `[vars]`, alpha and alpha lock, `[del]`, scrollback |
 | `ticks` | `term_set_tick` with the real `clock()`: 20 ticks of 100 ms arrive on time |
 | `scenes` | Switching between two scenes: each keeps its content and list selection, a scene's handler refocuses on entry, and a hidden scene can be printed into |
 | `overlays` | A centered dialog over a list: focus moved into it, typing, submitting and cancelling, focus given back, and the screen underneath restored exactly |

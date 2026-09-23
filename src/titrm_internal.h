@@ -15,9 +15,10 @@ typedef struct {
 typedef enum {
     TERM_KIND_PLAIN,
     TERM_KIND_TEXT,
+    TERM_KIND_BUTTON,
+    TERM_KIND_CHECKBOX,
     TERM_KIND_LIST,
     TERM_KIND_INPUT,
-    TERM_KIND_LOG,
     TERM_KIND_PROGRESS
 } term_kind_t;
 
@@ -58,14 +59,28 @@ struct term_panel {
     uint8_t cells_w, cells_h; /* size of `cells`, kept in step with iw, ih */
     uint8_t stale;            /* widget content must be rebuilt before the next frame */
 
-    /* Output cursor and attribute, in content coordinates. They persist. */
+    /* Output cursor and attribute, in content coordinates. They persist.
+     * Widgets draw in `attr`, and show focus with `focus_attr`. */
     uint8_t cur_x, cur_y;
     uint8_t attr;
+    uint8_t focus_attr;
+    uint8_t align;  /* term_align_t, for text */
+    uint8_t submit; /* [enter] while focused sends TERM_EV_SUBMIT */
+
+    /* Custom widgets: keys while focused, before the built-in widget. */
+    term_key_fn key_fn;
+    void *key_state;
 
     uint8_t kind;
     union {
-        struct {
-            const char *text;
+        struct {         /* text, button and checkbox (its label) */
+            char *buf;   /* owned copy, `len` bytes plus a terminator */
+            uint16_t len;
+            uint16_t limit; /* most bytes kept; the oldest lines go first */
+            uint16_t top;   /* first row shown */
+            uint8_t autoscroll;
+            uint8_t follow;  /* showing the end, and staying there */
+            uint8_t checked; /* checkbox */
         } text;
         struct {
             const char *const *items;
@@ -80,20 +95,12 @@ struct term_panel {
             uint8_t scroll;
         } input;
         struct {
-            char *lines; /* ring of `cap` strings, TERM_LOG_LINE bytes each */
-            uint16_t cap;
-            uint16_t head;  /* next slot to write */
-            uint16_t count; /* slots in use */
-            uint16_t back;  /* lines scrolled back from the newest */
-        } log;
-        struct {
             uint16_t value;
             uint16_t max;
         } progress;
     } u;
 };
 
-#define TERM_LOG_LINE (TERM_COLS + 1)
 #define TERM_KEY_QUEUE 16
 
 struct term_ctx {

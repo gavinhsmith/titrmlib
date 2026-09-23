@@ -2,16 +2,18 @@
  * titrmlib demo: a mock Wi-Fi manager (the sort of screen Tincan needs).
  *
  *   +- title bar: alpha indicator, spinner ------------------------------+
- *   | Networks (list) | Details (custom draw panel)                      |
- *   |                 | Log (scrollback)                                 |
+ *   | Networks (list) | Details (text)                                   |
+ *   |                 | Log (text that follows its end)                  |
  *   +- Command (input) --------------------------------------------------+
  *   | progress bar | key hints                                           |
  *
- * Keys: up/down pick a network, [enter] connects, [vars] moves focus,
- * [y=] shows/hides the details panel, [window] clears the log, [clear] quits.
+ * Keys: up/down pick a network, [enter] connects (secured networks ask for a
+ * password in a dialog), [vars] moves focus, [y=] shows/hides the details,
+ * [window] clears the log, [mode] shows the help scene, [clear] quits.
  * Type "help" in the command box for text commands (use [alpha] for letters).
  */
 
+#include <stdio.h>
 #include <string.h>
 
 #include "titrm.h"
@@ -37,12 +39,23 @@ static const network_t networks[] = {
 #define CONNECT_STEPS 20
 
 typedef struct {
+    term_panel_t *main;
+    term_panel_t *help;
+
     term_panel_t *title;
     term_panel_t *list;
     term_panel_t *details;
     term_panel_t *log;
     term_panel_t *input;
     term_panel_t *progress;
+
+    /* The password dialog, while it's open. */
+    term_panel_t *dialog;
+    term_panel_t *password;
+    term_panel_t *connect_button;
+    term_panel_t *cancel_button;
+    char dialog_title[32];
+    int dialog_network;
 
     const char *items[NUM_NETWORKS];
     int connecting; /* index being connected to, or -1 */
@@ -80,30 +93,64 @@ static void show_title(term_ctx_t *ctx, demo_t *d) {
 }
 
 static void show_details(demo_t *d) {
-    term_panel_t *p = d->details;
     const network_t *n = &networks[term_list_selected(d->list)];
-
-    term_panel_clear(p);
-    term_panel_printf(p, "SSID:     %s\n", n->ssid);
-    term_panel_print(p, "Signal:   ");
-    term_panel_putc(p, TERM_CH_SIG0 + n->signal);
-    term_panel_printf(p, "\nSecurity: %s\n", n->security);
-
-    term_panel_print(p, "Status:   ");
     int i = term_list_selected(d->list);
-    if (i == d->connected) {
-        term_panel_putc(p, TERM_CH_CHECK);
-        term_panel_print(p, " connected");
-    } else if (i == d->connecting) {
-        term_panel_putc(p, TERM_CH_DOT);
-        term_panel_print(p, " connecting");
+    char text[128];
+
+    snprintf(text, sizeof text, "SSID:     %s\nSignal:   %c\nSecurity: %s\nStatus:   %s", n->ssid,
+             TERM_CH_SIG0 + n->signal, n->security,
+             i == d->connected    ? TERM_S_CHECK " connected"
+             : i == d->connecting ? TERM_S_DOT " connecting"
+                                  : TERM_S_DOT_EMPTY " idle");
+    term_text_set(d->details, text);
+}
+
+/* ---- Connecting ---------------------------------------------------------- */
+
+static void start_connecting(demo_t *d, int index) {
+    d->connecting = index;
+    d->step = 0;
+    term_progress_set(d->progress, 0);
+    term_text_appendf(d->log, "Connecting: %s\n", networks[index].ssid);
+}
+
+/* Secured networks ask for a password first, in a dialog over the screen. */
+static void open_password_dialog(term_ctx_t *ctx, demo_t *d, int index) {
+    d->dialog_network = index;
+    snprintf(d->dialog_title, sizeof d->dialog_title, "Password: %s", networks[index].ssid);
+
+    d->dialog = term_overlay_open_centered(ctx, 32, 6);
+    term_panel_set_border(d->dialog, true);
+    term_panel_set_title(d->dialog, d->dialog_title);
+    d->password = term_split(d->dialog, TERM_VERTICAL, TERM_FIXED(1));
+    term_make_input(d->password);
+    term_split(d->dialog, TERM_VERTICAL, TERM_FIXED(1)); /* gap */
+    term_panel_t *buttons = term_split(d->dialog, TERM_VERTICAL, TERM_FIXED(1));
+    d->connect_button = term_split(buttons, TERM_HORIZONTAL, TERM_FILL);
+    term_split(buttons, TERM_HORIZONTAL, TERM_FIXED(2)); /* gap */
+    d->cancel_button = term_split(buttons, TERM_HORIZONTAL, TERM_FILL);
+    term_make_button(d->connect_button, "Connect");
+    term_make_button(d->cancel_button, "Cancel");
+
+    term_focus(ctx, d->password); /* focus returns to the list when it closes */
+}
+
+static void close_dialog(demo_t *d) {
+    term_overlay_close(d->dialog);
+    d->dialog = NULL;
+}
+
+static void connect_to(term_ctx_t *ctx, demo_t *d, int index) {
+    if (d->connecting >= 0) {
+        term_text_append(d->log, "Busy: already connecting\n");
+    } else if (strcmp(networks[index].security, "Open") != 0) {
+        open_password_dialog(ctx, d, index);
     } else {
-        term_panel_putc(p, TERM_CH_DOT_EMPTY);
-        term_panel_print(p, " idle");
+        start_connecting(d, index);
     }
 }
 
-/* ---- Logic --------------------------------------------------------------- */
+/* ---- Commands ------------------------------------------------------------ */
 
 static bool equals_nocase(const char *a, const char *b) {
     for (; *a && *b; a++, b++) {
@@ -116,95 +163,116 @@ static bool equals_nocase(const char *a, const char *b) {
     return *a == *b;
 }
 
-/* [vars] cycles focus: networks -> command -> log -> networks. */
-static void focus_next(term_ctx_t *ctx, demo_t *d) {
-    term_panel_t *order[] = {d->list, d->input, d->log};
-    term_panel_t *now = term_focused(ctx);
-    int next = 0;
-    for (int i = 0; i < 3; i++) {
-        if (order[i] == now) {
-            next = (i + 1) % 3;
-        }
-    }
-    term_focus(ctx, order[next]);
-}
-
 static void toggle_details(demo_t *d) {
-    /* Hidden panels take no space: the log grows into the gap next frame. */
+    /* Hidden panels take no space: the log grows into the gap. */
     term_panel_show(d->details, !term_panel_visible(d->details));
 }
 
-static void connect_to(demo_t *d, int index) {
-    if (d->connecting >= 0) {
-        term_log_print(d->log, "Busy: already connecting");
-        return;
-    }
-    d->connecting = index;
-    d->step = 0;
-    term_progress_set(d->progress, 0);
-    term_log_printf(d->log, "Connecting: %s", networks[index].ssid);
-}
-
 static void run_command(term_ctx_t *ctx, demo_t *d, const char *cmd) {
-    term_log_printf(d->log, "> %s", cmd);
+    term_text_appendf(d->log, "> %s\n", cmd);
     if (equals_nocase(cmd, "help")) {
-        term_log_print(d->log, "help clear info quit");
+        term_text_append(d->log, "help clear info quit\n");
     } else if (equals_nocase(cmd, "clear")) {
-        term_log_clear(d->log);
+        term_text_clear(d->log);
     } else if (equals_nocase(cmd, "info")) {
         toggle_details(d);
     } else if (equals_nocase(cmd, "quit")) {
         term_quit(ctx, 0);
     } else if (*cmd) {
-        term_log_print(d->log, "?? try: help");
+        term_text_append(d->log, "?? try: help\n");
     }
+}
+
+/* ---- Focus --------------------------------------------------------------- */
+
+/* [vars] cycles focus through `order`, starting over after the last. */
+static void focus_next(term_ctx_t *ctx, term_panel_t *const *order, int n) {
+    term_panel_t *now = term_focused(ctx);
+    int next = 0;
+    for (int i = 0; i < n; i++) {
+        if (order[i] == now) {
+            next = (i + 1) % n;
+        }
+    }
+    term_focus(ctx, order[next]);
+}
+
+/* ---- Events -------------------------------------------------------------- */
+
+/* The password dialog's events, while it's open. */
+static bool dialog_event(term_ctx_t *ctx, demo_t *d, const term_event_t *ev) {
+    if (ev->type == TERM_EV_SUBMIT && (ev->panel == d->password || ev->panel == d->connect_button)) {
+        term_text_appendf(d->log, "Password: %d characters\n", (int)strlen(term_input_text(d->password)));
+        int index = d->dialog_network;
+        close_dialog(d);
+        start_connecting(d, index);
+        return true;
+    }
+    if ((ev->type == TERM_EV_SUBMIT && ev->panel == d->cancel_button) ||
+        (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR)) {
+        close_dialog(d);
+        return true;
+    }
+    if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_VARS) {
+        term_panel_t *order[] = {d->password, d->connect_button, d->cancel_button};
+        focus_next(ctx, order, 3);
+        return true;
+    }
+    return false;
 }
 
 static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     demo_t *d = state;
 
-    switch (ev->type) {
-    case TERM_EV_START:
-        term_log_print(d->log, "Welcome to titrmlib!");
-        term_log_print(d->log, "[enter] to connect");
-        break;
+    if (d->dialog && dialog_event(ctx, d, ev)) {
+        /* handled */
+    } else {
+        switch (ev->type) {
+        case TERM_EV_START:
+            term_text_append(d->log, "Welcome to titrmlib!\n");
+            term_text_append(d->log, "[enter] to connect\n");
+            break;
 
-    case TERM_EV_TICK:
-        d->ticks++;
-        if (d->connecting >= 0) {
-            d->step++;
-            term_progress_set(d->progress, d->step * 100 / CONNECT_STEPS);
-            if (d->step >= CONNECT_STEPS) {
-                d->connected = d->connecting;
-                d->connecting = -1;
-                term_log_printf(d->log, TERM_S_CHECK "Connected: %s", networks[d->connected].ssid);
+        case TERM_EV_TICK:
+            d->ticks++;
+            if (d->connecting >= 0) {
+                d->step++;
+                term_progress_set(d->progress, d->step * 100 / CONNECT_STEPS);
+                if (d->step >= CONNECT_STEPS) {
+                    d->connected = d->connecting;
+                    d->connecting = -1;
+                    term_text_appendf(d->log, TERM_S_CHECK "Connected: %s\n", networks[d->connected].ssid);
+                }
             }
-        }
-        break;
+            break;
 
-    case TERM_EV_SUBMIT:
-        if (ev->panel == d->list) {
-            connect_to(d, ev->value);
-        } else {
-            run_command(ctx, d, term_input_text(ev->panel));
-            term_input_set(ev->panel, "");
-        }
-        break;
+        case TERM_EV_SUBMIT:
+            if (ev->panel == d->list) {
+                connect_to(ctx, d, ev->value);
+            } else if (ev->panel == d->input) {
+                run_command(ctx, d, term_input_text(d->input));
+                term_input_set(d->input, "");
+            }
+            break;
 
-    case TERM_EV_KEY:
-        if (ev->key == TERM_KEY_VARS) {
-            focus_next(ctx, d);
-        } else if (ev->key == TERM_KEY_F1) {
-            toggle_details(d);
-        } else if (ev->key == TERM_KEY_F2) {
-            term_log_clear(d->log);
-        } else if (ev->key == TERM_KEY_CLEAR) {
-            term_quit(ctx, 0);
-        }
-        break;
+        case TERM_EV_KEY:
+            if (ev->key == TERM_KEY_VARS) {
+                term_panel_t *order[] = {d->list, d->input, d->log};
+                focus_next(ctx, order, 3);
+            } else if (ev->key == TERM_KEY_F1) {
+                toggle_details(d);
+            } else if (ev->key == TERM_KEY_F2) {
+                term_text_clear(d->log);
+            } else if (ev->key == TERM_KEY_MODE) {
+                term_scene_switch(ctx, d->help);
+            } else if (ev->key == TERM_KEY_CLEAR) {
+                term_quit(ctx, 0);
+            }
+            break;
 
-    default: /* TERM_EV_CHANGE (the selection moved), TERM_EV_FOCUS_LOST */
-        break;
+        default: /* TERM_EV_CHANGE (the selection moved), TERM_EV_FOCUS_LOST */
+            break;
+        }
     }
 
     show_title(ctx, d);
@@ -212,7 +280,38 @@ static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     return true;
 }
 
+/* The help scene's own handler: any of its keys goes back. */
+static bool help_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+    demo_t *d = state;
+    if (ev->type == TERM_EV_KEY && (ev->key == TERM_KEY_MODE || ev->key == TERM_KEY_CLEAR)) {
+        term_scene_switch(ctx, d->main);
+        term_focus(ctx, d->list);
+        return true;
+    }
+    return ev->type == TERM_EV_KEY; /* other keys do nothing here */
+}
+
 /* ---- Setup --------------------------------------------------------------- */
+
+static void build_help(demo_t *d) {
+    term_panel_t *box = term_split(d->help, TERM_VERTICAL, TERM_FILL);
+    term_panel_set_border(box, true);
+    term_panel_set_title(box, "Help");
+    term_make_text(box,
+                   "Keys\n"
+                   "  up/down   pick a network\n"
+                   "  [enter]   connect (password if secured)\n"
+                   "  [vars]    move focus\n"
+                   "  [y=]      show or hide the details\n"
+                   "  [window]  clear the log\n"
+                   "  [alpha]   type letters in the command box\n"
+                   "  [mode]    this help\n"
+                   "  [clear]   quit\n"
+                   "\n"
+                   "Commands: help, clear, info, quit\n"
+                   "\n"
+                   "[mode] or [clear] goes back.");
+}
 
 int main(void) {
     static demo_t d;
@@ -223,13 +322,15 @@ int main(void) {
     }
 
     term_ctx_t *ctx = term_init();
-    term_panel_t *root = term_root(ctx);
+    d.main = term_root(ctx);
+    d.help = term_scene_new(ctx, help_event, &d);
+    build_help(&d);
 
     /* Screen: title bar / body / command line / status bar, stacked. */
-    d.title = term_split(root, TERM_VERTICAL, TERM_FIXED(1));
-    term_panel_t *body = term_split(root, TERM_VERTICAL, TERM_FILL);
-    d.input = term_split(root, TERM_VERTICAL, TERM_FIXED(3));
-    term_panel_t *status = term_split(root, TERM_VERTICAL, TERM_FIXED(1));
+    d.title = term_split(d.main, TERM_VERTICAL, TERM_FIXED(1));
+    term_panel_t *body = term_split(d.main, TERM_VERTICAL, TERM_FILL);
+    d.input = term_split(d.main, TERM_VERTICAL, TERM_FIXED(3));
+    term_panel_t *status = term_split(d.main, TERM_VERTICAL, TERM_FIXED(1));
 
     /* Body: network list on the left, details over log on the right. */
     d.list = term_split(body, TERM_HORIZONTAL, TERM_PERCENT(40));
@@ -245,10 +346,13 @@ int main(void) {
     term_panel_set_border(d.list, true);
     term_panel_set_title(d.list, "Networks");
 
+    term_make_text(d.details, "");
     term_panel_set_border(d.details, true);
     term_panel_set_title(d.details, "Details");
 
-    term_make_log(d.log, 32);
+    term_make_text(d.log, "");
+    term_text_autoscroll(d.log, true);
+    term_panel_set_focusable(d.log, true); /* up/down scroll it */
     term_panel_set_border(d.log, true);
     term_panel_set_title(d.log, "Log");
 
@@ -257,7 +361,7 @@ int main(void) {
     term_panel_set_title(d.input, "Command");
 
     term_make_progress(d.progress, 100);
-    term_make_text(hints, " [vars]focus [y=]info [clear]quit");
+    term_make_text(hints, " [vars]focus [y=]info [mode]help");
 
     term_set_tick(ctx, 100);
     term_focus(ctx, d.list);

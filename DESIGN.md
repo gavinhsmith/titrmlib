@@ -150,7 +150,7 @@ the 50 ms goal once step 1 lands.
 | 2. Focus and event changes | Done |
 | 3. Scenes | Done |
 | 4. Overlays | Done |
-| 5. Widget set and demo | Not started |
+| 5. Widget set and demo | Done |
 | 6. Color | Not started |
 
 Steps 1 and 2 were built together: with retained output, the app has to be
@@ -199,8 +199,7 @@ told about everything that changes what it shows, which is what step 2 adds.
   only hold focus while it is in the active scene.
 - **Destroying scenes:** `term_panel_destroy()` removes a scene that isn't
   active; the active scene and `term_root()` can't be destroyed.
-- **The panel pool** (`TERM_MAX_PANELS`, 32) is shared by all scenes. Still
-  open, see below.
+- **The panel pool** (`TERM_MAX_PANELS`, 32) is shared by all scenes.
 
 ### Decisions made while building step 4
 
@@ -221,12 +220,38 @@ told about everything that changes what it shows, which is what step 2 adds.
   a program before launching it. Launching immediately after a 27 KB transfer
   dropped the first keys of the `Asm(` launch on the OS 5.3 ROM.
 
+### Decisions made while building step 5
+
+- **Panel properties** used by the widgets and by custom widgets:
+  `term_panel_set_focus_attr` (how focus shows: title, list selection, input
+  cursor, checkbox; reverse video by default), `term_panel_set_align` (left
+  or centered text), `term_panel_set_submit` (`[enter]` sends
+  `TERM_EV_SUBMIT`), `term_panel_set_keys` (a key handler that runs before the
+  built-in widget) and `term_panel_send` (a widget's own events).
+  `term_panel_set_attr` is also the attribute widgets draw in.
+- **Text** copies its text (no lifetime rules), grows with
+  `term_text_append`/`term_text_appendf` and keeps at most
+  `term_text_limit` bytes (1024 by default), dropping the oldest lines.
+  `term_text_autoscroll` follows the end until the user scrolls up; scrolling
+  back to the end resumes it. A focusable text widget scrolls with up/down,
+  and arrows at the right edge show more text above or below. This replaces
+  the log widget (`term_make_log` and friends are removed).
+- **Container** needs no API: a plain panel with children, with the existing
+  border and title.
+- **Button:** a text widget, centered, reverse video, focusable, with submit
+  on. A focused button shows an arrow at its left edge, since its colors
+  already stand out.
+- **Checkbox:** `[x] label` with a check mark glyph; `[enter]` toggles it and
+  sends `TERM_EV_CHANGE` with value 1 or 0; `term_checkbox_set` sends nothing.
+- **Deferred until needed:** input options (masking, digits only, a shorter
+  maximum) and list multi-select.
+- **The demo** now uses a text log, a password dialog (overlay with
+  buttons), and a help scene; `demo.gif` shows the stage 1 demo and needs
+  re-recording.
+
 ## Still to decide
 
-- The panel pool: whether `TERM_MAX_PANELS` (32) is enough with several
-  scenes and overlays, or whether it should grow or be per scene.
+- The panel pool: 32 panels shared by all scenes and overlays has been enough
+  so far. Revisit if an app runs short.
 - Memory: retained cells cost roughly one screen of cells per scene plus
-  overlays. Budget and limits to be checked on hardware.
-- Exact text widget API for appending and scrolling.
-- Input options: maximum length, digits only, password masking.
-- List options: multi-select with check marks.
+  overlays. Check on hardware with a larger app.

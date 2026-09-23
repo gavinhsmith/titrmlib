@@ -300,7 +300,7 @@ static void test_destroy_frees_subtree(void) {
     term_panel_t *b = term_split(root, TERM_VERTICAL, TERM_FIXED(4));
     term_panel_t *c = term_split(root, TERM_VERTICAL, TERM_FILL);
     term_split(b, TERM_HORIZONTAL, TERM_FILL);
-    term_make_log(term_split(b, TERM_HORIZONTAL, TERM_FILL), 8);
+    term_make_text(term_split(b, TERM_HORIZONTAL, TERM_FILL), "freed with its panel");
 
     int used = 0;
     for (int i = 0; i < TERM_MAX_PANELS; i++) {
@@ -921,53 +921,157 @@ static void test_input_limit_and_scroll(void) {
      * until the library resets scroll there. */
 }
 
-static void test_log_ring_and_scrollback(void) {
+static void test_text_append_limit_and_scroll(void) {
     term_ctx_t *ctx = setup();
     term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(3));
-    term_make_log(p, 5);
-    term_focus(ctx, p);
+    term_make_text(p, "");
+    term_text_limit(p, 30); /* "line N\n" is 7 bytes: 4 lines fit */
+    term_text_autoscroll(p, true);
     for (int i = 0; i < 7; i++) {
-        term_log_printf(p, "line %d", i);
+        term_text_appendf(p, "line %d\n", i);
     }
-    CHECK_EQ(p->u.log.count, 5); /* 0 and 1 fell off the ring */
+    CHECK_EQ(p->u.text.len, 28);
+    CHECK_STR(p->u.text.buf, "line 3\nline 4\nline 5\nline 6\n"); /* oldest dropped */
     draw(ctx);
-    CHECK_STR(text_at(0, 0, 6), "line 4");
+    CHECK_STR(text_at(0, 0, 6), "line 4"); /* following the end */
     CHECK_STR(text_at(0, 2, 6), "line 6");
-    CHECK_EQ(ch_at(TERM_COLS - 1, 0), TERM_CH_ARROW_U);
-    CHECK(ch_at(TERM_COLS - 1, 2) != TERM_CH_ARROW_D);
+    CHECK_EQ(ch_at(TERM_COLS - 1, 0), TERM_CH_ARROW_U); /* more above */
 
-    static const uint8_t up[] = {sk_Up, sk_Up, sk_Up, sk_Up};
-    run_keys(ctx, up, 4);
-    CHECK_EQ(p->u.log.back, 2); /* can't scroll past the oldest line */
-    CHECK_STR(text_at(0, 0, 6), "line 2");
+    /* Focused, up/down scroll; leaving the end stops following. */
+    term_panel_set_focusable(p, true);
+    term_focus(ctx, p);
+    static const uint8_t up[] = {sk_Up, sk_Up, sk_Up};
+    run_keys(ctx, up, 3);
+    CHECK_STR(text_at(0, 0, 6), "line 3"); /* can't scroll past the top */
     CHECK_EQ(ch_at(TERM_COLS - 1, 2), TERM_CH_ARROW_D);
-
-    term_log_print(p, "new"); /* scrolled back: the view holds still... */
+    term_text_append(p, "new\n");
     draw(ctx);
-    CHECK(row_blank(0, 0, TERM_COLS - 1)); /* ...less line 2, which fell off the ring */
-    CHECK_STR(text_at(0, 1, 6), "line 3");
-    CHECK_STR(text_at(0, 2, 6), "line 4");
+    CHECK(strcmp(text_at(0, 2, 3), "new") != 0); /* not following while scrolled up */
 
-    term_log_clear(p);
+    static const uint8_t down[] = {sk_Down, sk_Down, sk_Down};
+    run_keys(ctx, down, 3);
+    term_text_append(p, "newest\n");
+    draw(ctx);
+    CHECK_STR(text_at(0, 2, 6), "newest"); /* back at the end: following again */
+
+    term_text_scroll(p, -100);
+    draw(ctx);
+    CHECK_EQ(p->u.text.top, 0);
+
+    term_text_clear(p);
     draw(ctx);
     CHECK(row_blank(0, 0, TERM_COLS));
+    CHECK_EQ(term_keys_pending(), 0);
+
+    /* Text longer than the limit keeps its end. */
+    term_text_append(p, "0123456789012345678901234567890123456789");
+    CHECK_EQ(p->u.text.len, 30);
+    CHECK_EQ(p->u.text.buf[0], '0' + 40 % 10);
 }
 
-static void test_log_splits_lines(void) {
+static void test_text_align_and_attr(void) {
     term_ctx_t *ctx = setup();
-    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
-    term_make_log(p, 10);
-
-    char wide[TERM_LOG_LINE + 5];
-    memset(wide, 'w', sizeof wide - 1);
-    wide[sizeof wide - 1] = '\0';
-    term_log_print(p, "a\nb\n");
-    term_log_print(p, wide);
-    CHECK_EQ(p->u.log.count, 4); /* "a", "b", a full line, the rest */
-
+    term_panel_t *p = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(9));
+    term_make_text(p, "abc\nabcde");
+    term_panel_set_align(p, TERM_ALIGN_CENTER);
+    term_panel_set_attr(p, TERM_ATTR_REVERSE);
     draw(ctx);
-    CHECK_STR(text_at(0, TERM_ROWS - 4, 1), "a");
-    CHECK_STR(text_at(0, TERM_ROWS - 1, 6), "wwwww ");
+    CHECK_STR(text_at(0, 0, 9), "   abc   ");
+    CHECK_STR(text_at(0, 1, 9), "  abcde  ");
+    CHECK_EQ(attr_at(0, 5), TERM_ATTR_REVERSE); /* the whole panel is filled */
+    CHECK_EQ(attr_at(9, 0), TERM_ATTR_NORMAL);
+}
+
+static void test_button(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *b = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(1));
+    term_make_button(b, "OK");
+    draw(ctx);
+    CHECK_STR(text_at(24, 0, 4), " OK "); /* (53 - 2) / 2 = 25 */
+    CHECK_EQ(attr_at(0, 0), TERM_ATTR_REVERSE);
+    CHECK_EQ(ch_at(0, 0), 0);
+
+    term_focus(ctx, b);
+    draw(ctx);
+    CHECK_EQ(ch_at(0, 0), TERM_CH_ARROW_R); /* shows it has focus */
+
+    static const uint8_t keys[] = {sk_Enter};
+    run_keys(ctx, keys, 1);
+    CHECK_EQ(count_events(TERM_EV_SUBMIT), 1);
+    CHECK(last_event(TERM_EV_SUBMIT)->panel == b);
+}
+
+static void test_checkbox(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *c = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(1));
+    term_make_checkbox(c, "Wi-Fi", false);
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 9), "[ ] Wi-Fi");
+    CHECK(!term_checkbox_checked(c));
+
+    term_focus(ctx, c);
+    static const uint8_t keys[] = {sk_Enter};
+    run_keys(ctx, keys, 1);
+    CHECK(term_checkbox_checked(c));
+    CHECK_EQ(count_events(TERM_EV_CHANGE), 1);
+    CHECK_EQ(last_event(TERM_EV_CHANGE)->value, 1);
+    CHECK_EQ(ch_at(1, 0), TERM_CH_CHECK);
+    CHECK_EQ(attr_at(8, 0), TERM_ATTR_REVERSE); /* focused */
+
+    term_checkbox_set(c, false); /* no event */
+    CHECK(!term_checkbox_checked(c));
+}
+
+/* A custom widget: a counter that right/left change. */
+static bool counter_keys(term_panel_t *p, const term_event_t *ev, void *state) {
+    int *n = state;
+    if (ev->key != TERM_KEY_RIGHT && ev->key != TERM_KEY_LEFT) {
+        return false;
+    }
+    *n += ev->key == TERM_KEY_RIGHT ? 1 : -1;
+    term_panel_clear(p);
+    term_panel_printf(p, "%d", *n);
+    term_panel_send(p, TERM_EV_CHANGE, *n);
+    return true;
+}
+
+static void test_custom_widget(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(1));
+    static int count;
+    count = 0;
+    term_panel_set_keys(p, counter_keys, &count);
+    term_panel_set_submit(p, true);
+    term_panel_set_focusable(p, true);
+    term_focus(ctx, p);
+
+    static const uint8_t keys[] = {sk_Right, sk_Right, sk_Left, sk_Right, sk_Up, sk_Enter};
+    run_keys(ctx, keys, (int)sizeof keys);
+    CHECK_EQ(count, 2);
+    CHECK_STR(text_at(0, 0, 2), "2 ");
+    CHECK_EQ(count_events(TERM_EV_CHANGE), 4);
+    CHECK_EQ(last_event(TERM_EV_CHANGE)->value, 2);
+    CHECK(last_event(TERM_EV_CHANGE)->panel == p);
+    CHECK_EQ(count_events(TERM_EV_KEY), 1); /* up: not used, so the app gets it */
+    CHECK_EQ(count_events(TERM_EV_SUBMIT), 1); /* [enter], from set_submit */
+}
+
+static void test_focus_attr(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(5));
+    term_panel_set_border(p, true);
+    term_panel_set_title(p, "List");
+    term_make_list(p, items, 3);
+    term_focus(ctx, p);
+    draw(ctx);
+    CHECK_EQ(attr_at(2, 0), TERM_ATTR_REVERSE); /* title */
+    CHECK_EQ(attr_at(5, 1), TERM_ATTR_REVERSE); /* selected row */
+
+    term_panel_set_focus_attr(p, TERM_ATTR_NORMAL); /* no highlight */
+    draw(ctx);
+    CHECK_EQ(attr_at(2, 0), TERM_ATTR_NORMAL);
+    CHECK_EQ(attr_at(5, 1), TERM_ATTR_NORMAL);
+    CHECK_EQ(ch_at(1, 1), TERM_CH_ARROW_R); /* the arrow still marks the selection */
 }
 
 static void test_progress(void) {
@@ -1351,8 +1455,12 @@ static const struct {
     TEST(test_list_scrolls_with_scrollbar),
     TEST(test_input_editing),
     TEST(test_input_limit_and_scroll),
-    TEST(test_log_ring_and_scrollback),
-    TEST(test_log_splits_lines),
+    TEST(test_text_append_limit_and_scroll),
+    TEST(test_text_align_and_attr),
+    TEST(test_button),
+    TEST(test_checkbox),
+    TEST(test_custom_widget),
+    TEST(test_focus_attr),
     TEST(test_progress),
     TEST(test_scenes_keep_their_content),
     TEST(test_scene_event_chain),

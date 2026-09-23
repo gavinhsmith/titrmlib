@@ -29,7 +29,7 @@ Everything here is clipped to the panel's content area, whatever its depth in th
 void term_panel_move(term_panel_t * panel, int col, int row)
 ```
 
-Defined in src/titrm.h:360
+Defined in src/titrm.h:361
 
 Moves the panel's cursor.
 
@@ -41,7 +41,7 @@ Moves the panel's cursor.
 void term_panel_set_attr(term_panel_t * panel, uint8_t attr)
 ```
 
-Defined in src/titrm.h:363
+Defined in src/titrm.h:364
 
 Sets the attribute (TERM_ATTR_*) for the text printed next.
 
@@ -53,7 +53,7 @@ Sets the attribute (TERM_ATTR_*) for the text printed next.
 void term_panel_wrap(term_panel_t * panel, bool wrap)
 ```
 
-Defined in src/titrm.h:366
+Defined in src/titrm.h:367
 
 Wrap at the right edge instead of clipping (the default).
 
@@ -65,7 +65,7 @@ Wrap at the right edge instead of clipping (the default).
 void term_panel_putc(term_panel_t * panel, char c)
 ```
 
-Defined in src/titrm.h:369
+Defined in src/titrm.h:370
 
 Prints one character. '\n' starts a new line.
 
@@ -77,7 +77,7 @@ Prints one character. '\n' starts a new line.
 void term_panel_print(term_panel_t * panel, const char * str)
 ```
 
-Defined in src/titrm.h:372
+Defined in src/titrm.h:373
 
 Prints a string at the cursor.
 
@@ -89,7 +89,7 @@ Prints a string at the cursor.
 void term_panel_printf(term_panel_t * panel, const char * fmt, ...)
 ```
 
-Defined in src/titrm.h:375
+Defined in src/titrm.h:376
 
 Prints formatted text at the cursor.
 
@@ -101,7 +101,7 @@ Prints formatted text at the cursor.
 void term_panel_repeat(term_panel_t * panel, char c, int count)
 ```
 
-Defined in src/titrm.h:378
+Defined in src/titrm.h:379
 
 Prints `c``count` times.
 
@@ -113,7 +113,7 @@ Prints `c``count` times.
 void term_panel_clear(term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:381
+Defined in src/titrm.h:382
 
 Blanks the panel's content area and moves the cursor to 0,0.
 

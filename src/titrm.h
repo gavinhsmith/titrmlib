@@ -325,8 +325,9 @@ int term_panel_height(const term_panel_t *panel);
  * focused panel is hidden or destroyed, focus becomes empty and the app gets
  * TERM_EV_FOCUS_LOST.
  *
- * Widgets that take input (list, input, log) are focusable by default; any
- * other panel can opt in with term_panel_set_focusable().
+ * Widgets that take input (list, input, button, checkbox) are focusable by
+ * default; any other panel can opt in with term_panel_set_focusable(), such
+ * as a text widget that should scroll with up/down.
  * @{
  */
 
@@ -386,15 +387,61 @@ void term_panel_clear(term_panel_t *panel);
  * @defgroup widgets Widgets
  * @brief Panels with built-in content and key handling.
  *
- * term_make_* turns a panel into a widget; the term_<widget>_* calls drive it.
+ * term_make_* turns a panel with no children into a widget; the
+ * term_<widget>_* calls drive it. A plain panel that holds other panels is a
+ * container, and needs no call: give it a border and title if you like.
+ *
+ * Widgets draw in the panel's attribute (term_panel_set_attr()) and show
+ * focus with its focus attribute (term_panel_set_focus_attr()).
  * @{
  */
 
-/** @brief Static text, word-wrapped to the panel. `text` must outlive the panel. */
+/**
+ * @brief Text, word-wrapped to the panel. The text is copied.
+ *
+ * '\\n' starts a new line. If the text is taller than the panel, a focusable
+ * text widget scrolls with up/down, and arrows at the right edge show that
+ * more is above or below.
+ */
 void term_make_text(term_panel_t *panel, const char *text);
 
-/** @brief Replaces a text widget's text. `text` must outlive the panel. */
+/** @brief Replaces a text widget's text (copied). */
 void term_text_set(term_panel_t *panel, const char *text);
+
+/** @brief Adds text to the end. Use '\\n' to end lines, e.g. for a log. */
+void term_text_append(term_panel_t *panel, const char *text);
+
+/** @brief Adds formatted text to the end. */
+void term_text_appendf(term_panel_t *panel, const char *fmt, ...);
+
+/** @brief Removes all the text. */
+void term_text_clear(term_panel_t *panel);
+
+/** @brief Keeps at most `bytes` of text, dropping the oldest lines first. The default is 1024. */
+void term_text_limit(term_panel_t *panel, int bytes);
+
+/** @brief Keeps the end of the text in view as it grows, unless scrolled up; scrolling back to the end resumes it. */
+void term_text_autoscroll(term_panel_t *panel, bool on);
+
+/** @brief Scrolls by `rows` (negative is up), within the text. */
+void term_text_scroll(term_panel_t *panel, int rows);
+
+/**
+ * @brief A button: centered text in reverse video that sends TERM_EV_SUBMIT on [enter].
+ *
+ * It's a focusable text widget with those settings, and an arrow at its left
+ * edge while it has focus. The label is copied.
+ */
+void term_make_button(term_panel_t *panel, const char *label);
+
+/** @brief An on/off item: "[x] label". [enter] toggles it and sends TERM_EV_CHANGE (value = 1 if checked). */
+void term_make_checkbox(term_panel_t *panel, const char *label, bool checked);
+
+/** @brief Whether the checkbox is checked. */
+bool term_checkbox_checked(const term_panel_t *panel);
+
+/** @brief Checks or unchecks the checkbox (sends no event). */
+void term_checkbox_set(term_panel_t *panel, bool checked);
 
 /**
  * @brief Selectable list. up/down move (TERM_EV_CHANGE), [enter] emits TERM_EV_SUBMIT.
@@ -426,23 +473,53 @@ const char *term_input_text(const term_panel_t *panel);
 /** @brief Replaces the input's text (up to TERM_INPUT_MAX characters). */
 void term_input_set(term_panel_t *panel, const char *text);
 
-/** @brief Scrollback holding up to `max_lines`. New lines are appended at the bottom; up/down scroll back. */
-void term_make_log(term_panel_t *panel, int max_lines);
-
-/** @brief Appends text to a log; each '\\n' starts a new line. */
-void term_log_print(term_panel_t *panel, const char *str);
-
-/** @brief Appends formatted text to a log. */
-void term_log_printf(term_panel_t *panel, const char *fmt, ...);
-
-/** @brief Removes every line from a log. */
-void term_log_clear(term_panel_t *panel);
-
 /** @brief Horizontal progress bar filling the panel's first row, from 0 to `max`. */
 void term_make_progress(term_panel_t *panel, int max);
 
 /** @brief Sets the progress value; it is clamped to 0..max. */
 void term_progress_set(term_panel_t *panel, int value);
+
+/** @} */
+
+/**
+ * @defgroup custom Panel properties and custom widgets
+ * @brief Settings any panel can have, and what's needed to build new widgets.
+ *
+ * A custom widget is a panel with a key handler: make it focusable, print its
+ * content, handle keys while it's focused, and send TERM_EV_SUBMIT or
+ * TERM_EV_CHANGE with term_panel_send() so the app hears about it like any
+ * built-in widget.
+ * @{
+ */
+
+/** @brief Text alignment, for text widgets. */
+typedef enum {
+    TERM_ALIGN_LEFT,  /**< the default */
+    TERM_ALIGN_CENTER /**< each line centered */
+} term_align_t;
+
+/** @brief Aligns a text widget's lines. */
+void term_panel_set_align(term_panel_t *panel, term_align_t align);
+
+/**
+ * @brief Sets how the panel shows it has focus (TERM_ATTR_*; TERM_ATTR_REVERSE by default).
+ *
+ * Used for the title, a list's selected row, an input's cursor and a focused
+ * checkbox. TERM_ATTR_NORMAL turns the highlight off.
+ */
+void term_panel_set_focus_attr(term_panel_t *panel, uint8_t attr);
+
+/** @brief When on, [enter] on the focused panel sends TERM_EV_SUBMIT, if its widget doesn't use it. */
+void term_panel_set_submit(term_panel_t *panel, bool submit);
+
+/** @brief A key handler for a custom widget; return true if the key was used. */
+typedef bool (*term_key_fn)(term_panel_t *panel, const term_event_t *ev, void *state);
+
+/** @brief Keys while `panel` is focused go to `fn` first, before its built-in widget. NULL removes it. */
+void term_panel_set_keys(term_panel_t *panel, term_key_fn fn, void *state);
+
+/** @brief Sends an event from `panel` along the handler chain, as a widget does (e.g. TERM_EV_SUBMIT). */
+void term_panel_send(term_panel_t *panel, term_event_type_t type, int value);
 
 /** @} */
 

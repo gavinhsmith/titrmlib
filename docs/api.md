@@ -12,6 +12,7 @@
 | [`Scenes`](api-scenes.md#scenes) | Full-screen panel trees the app switches between. |
 | [`Panel tree`](api-panels.md#paneltree) | Splitting the screen into panels and sizing them. |
 | [`Panel-scoped output`](api-output.md#panel-scopedoutput) | Drawing text into a panel. |
+| [`Panel properties and custom widgets`](api-custom.md#panelpropertiesandcustomwidgets) | Settings any panel can have, and what's needed to build new widgets. |
 | [`Version`](api-version.md#version) |  |
 | [`Widgets`](api-widgets.md#widgets) | Panels with built-in content and key handling. |
 | [`Overlays`](api-overlays.md#overlays) | Panels drawn on top of the active scene, such as dialogs. |
