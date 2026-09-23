@@ -11,6 +11,9 @@ You need:
   standard library is used.
 - A host C compiler (gcc or clang) for the unit tests. On Windows,
   [MSYS2](https://www.msys2.org/) provides one: `pacman -S mingw-w64-ucrt-x86_64-gcc`.
+- For the API docs only: [Doxygen](https://www.doxygen.nl/) 1.18.0 on `PATH`
+  (on Windows: `winget install DimitriVanHeesch.Doxygen`) and
+  [Node.js](https://nodejs.org/), which runs moxygen through `npx`.
 - For the hardware tests only: a TI-84 Plus CE ROM image (see
   [Hardware tests](#hardware-tests)).
 
@@ -22,6 +25,8 @@ You need:
 | `src/FONT.md` | Character code → glyph → purpose table (generated) |
 | `examples/hello/` | The smallest useful program |
 | `examples/demo/` | A mock Wi-Fi manager using every feature |
+| `docs/` | API reference (generated) |
+| `Doxyfile` | Doxygen settings for the API docs |
 | `tools/gen_font.py` | Converts `tools/petabyt-font/font.h` into `src/titrm_font.c`, `src/titrm_chars.h` and `src/FONT.md` |
 | `tests/` | Host unit tests and their stand-in CE headers (`tests/stubs/`) |
 | `tests/hw/` | Hardware tests for CEmu's autotester, and their runner `run.py` |
@@ -52,6 +57,33 @@ python tools/gen_font.py
 
 Commit the script and the regenerated files together. CI fails if they don't
 match.
+
+## API docs
+
+`docs/` is generated from the doc comments in `src/titrm.h`.
+[Doxygen](https://www.doxygen.nl/) reads the header into XML, and
+[moxygen](https://github.com/sourcey/moxygen) turns the XML into one Markdown
+page per group, plus the index `docs/index.md`. GitHub Pages publishes
+`docs/` from `main` as <https://gavinhsmith.github.io/titrmlib/>, using
+`docs/_config.yml`.
+
+In the header:
+
+- Document every public function, type, macro and struct field with a
+  `/** @brief ... */` comment, or `/**< ... */` after a field or enum value.
+- Put each declaration in the `@defgroup` of its section, between `@{` and
+  `@}`. Each group becomes one page.
+
+Edit the header, not `docs/`, then regenerate:
+
+```sh
+make docs                                                  # Doxygen on PATH
+make docs DOXYGEN="/c/Program Files/doxygen/bin/doxygen"  # or point at it
+```
+
+Doxygen fails the build if anything public is undocumented. Commit the header
+and the regenerated docs together; CI regenerates them with the same versions
+(Doxygen 1.18.0, moxygen 2.1.19) and fails if they differ.
 
 ## Unit tests
 
@@ -147,7 +179,7 @@ before committing**, because a recording accepts whatever was on screen.
 `.github/workflows/ci.yml` runs on every push and pull request:
 
 - **test**: the unit tests under gcc and clang with ASan and UBSan
-- **font**: reruns `tools/gen_font.py` and fails if the files in `src/` change
+- **font**: reruns `tools/gen_font.py` and `make docs` and fails if `src/` or `docs/` change
 - **build**: builds every example and hardware test program with CEdev
 
 The hardware tests themselves don't run in CI because they need a ROM. Run
@@ -175,5 +207,5 @@ first.
 - Run the unit tests. If you touch rendering, input or timing, run the
   hardware tests too.
 - If screens change on purpose, re-record them and check the PNGs.
-- Update `README.md` for public API changes, and `ROADMAP.md` when you finish
+- Update `README.md` and regenerate `docs/` for public API changes, and `ROADMAP.md` when you finish
   or add a planned item.

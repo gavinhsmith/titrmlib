@@ -68,7 +68,7 @@ reached through `..`.
 
 ## Using it
 
-The whole API is in [`src/titrm.h`](src/titrm.h).
+The whole API is in [`src/titrm.h`](src/titrm.h); the [API reference](https://gavinhsmith.github.io/titrmlib/) lists every function, type and constant.
 
 **Panels.** `term_split(parent, dir, size)` adds a child to a panel. `dir` is
 `TERM_HORIZONTAL` (side by side) or `TERM_VERTICAL` (stacked), and every child
@@ -116,6 +116,7 @@ literals are `TERM_S_*`: `TERM_S_CHECK " Connected"`. The full table is in
 
 ## Documentation
 
+- [API reference](https://gavinhsmith.github.io/titrmlib/) (source in [docs/](docs/index.md))
 - [CONTRIBUTING.md](CONTRIBUTING.md): development setup, building, unit and
   hardware tests, reporting issues
 - [ROADMAP.md](ROADMAP.md): planned features and known issues

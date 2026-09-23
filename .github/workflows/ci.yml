@@ -19,7 +19,7 @@ jobs:
         run: make -C tests clean test CC=clang
 
   font:
-    name: Generated font is up to date
+    name: Generated files are up to date
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,13 +30,23 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Regenerate font files
-        run: python tools/gen_font.py
+      - name: Install Doxygen
+        run: |
+          curl -sSL https://github.com/doxygen/doxygen/releases/download/Release_1_18_0/doxygen-1.18.0.linux.bin.tar.gz | tar -xz
+          echo "$PWD/doxygen-1.18.0/bin" >> "$GITHUB_PATH"
+
+      - name: Regenerate font files and API docs
+        run: |
+          python tools/gen_font.py
+          make docs
+          rm -rf doxygen-1.18.0
 
       - name: Check for drift
         run: |
-          if ! git diff --exit-code -- src/; then
-            echo "::error::src/ differs from tools/gen_font.py output. Run 'python tools/gen_font.py' and commit the result."
+          if [ -n "$(git status --porcelain -- src/ docs/)" ]; then
+            git status --short -- src/ docs/
+            git diff -- src/ docs/
+            echo "::error::Generated files are out of date. Run 'python tools/gen_font.py' and 'make docs' and commit the result."
             exit 1
           fi
 
