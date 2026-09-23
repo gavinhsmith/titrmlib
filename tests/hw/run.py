@@ -187,10 +187,12 @@ def run_test(name, autotester, env, launch):
     # The committed config names the program by target; point it at the build.
     resolved = dict(config)
     resolved["transfer_files"] = [program_path(name, config)]
-    if launch == "artifice":
-        steps = artifice_launch(config["target"]["name"])
-        resolved["sequence"] = [x for step in config["sequence"]
-                                for x in (steps if step == "action|launch" else [step])]
+    # Launching right after a large transfer can drop the first keys the
+    # launch types (seen with a 27 KB program), so wait a second first.
+    steps = ["delay|1000"]
+    steps += artifice_launch(config["target"]["name"]) if launch == "artifice" else ["action|launch"]
+    resolved["sequence"] = [x for step in config["sequence"]
+                            for x in (steps if step == "action|launch" else [step])]
     config_path = os.path.join(work, "autotest.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(resolved, f, indent=2)
@@ -238,9 +240,9 @@ def write_png(path, width, height, rgb_rows):
 
 
 def dump_to_png(dump):
-    """Renders a VRAM dump. 16bpp dumps are RGB565. 8bpp dumps are palette
-    indices; titrmlib only uses 0x00 (black) and 0xFF (white), so other
-    indices are shown as grey levels rather than the real palette."""
+    """Renders a VRAM dump. 16bpp dumps are RGB565. 8bpp dumps are indices
+    into graphx's default palette, where index i is the 1555 color
+    i | i << 8 (bit 15 is the low bit of green)."""
     with open(dump, "rb") as f:
         data = f.read()
     rows = []
@@ -254,8 +256,10 @@ def dump_to_png(dump):
     elif len(data) == SCREEN_W * SCREEN_H:
         for y in range(SCREEN_H):
             row = []
-            for v in data[y * SCREEN_W:(y + 1) * SCREEN_W]:
-                row += [v, v, v]
+            for i in data[y * SCREEN_W:(y + 1) * SCREEN_W]:
+                v = i | i << 8
+                row += [(v >> 10 & 31) * 255 // 31, ((v >> 5 & 31) << 1 | v >> 15) * 255 // 63,
+                        (v & 31) * 255 // 31]
             rows.append(row)
     else:
         return None

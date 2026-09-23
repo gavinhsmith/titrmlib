@@ -16,9 +16,12 @@ them content, and hand control to `term_run()`. Your program never calls
 graphx itself.
 
 - **Panel tree:** split any panel into fixed, percentage or weighted-fill children, nested as deep as you need
+- **Scenes:** several full-screen panel trees, one shown at a time, each with its own event handler
+- **Overlays:** panels drawn on top of a scene, such as dialogs, that give focus back when they close
 - **Clipped output:** each panel has its own cursor, and nothing drawn in it can spill outside it
-- **Focus:** `[vars]` moves between focusable panels, and widgets get keys first
-- **Widgets:** text, selectable list, text input, scrollback log, progress bar, plus borders and titles
+- **Focus:** your app decides which panel has focus; the focused widget gets keys first
+- **Widgets:** text (with scrolling and auto-scroll, for logs), list, input, button, checkbox, progress bar, plus borders and titles; build your own with a key handler
+- **Color:** foreground and background per panel, from the 256-color palette; reverse video swaps them
 - **Glyphs:** box-drawing characters and small status icons (check marks, signal bars, arrows) alongside ASCII
 - **Ticks:** timed events for animation and polling
 
@@ -27,11 +30,14 @@ graphx itself.
 ```c
 #include "titrm.h"
 
-static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+/* The event handler: return true for events it handled. */
+static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     (void)state;
     if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR) {
         term_quit(ctx, 0);
+        return true;
     }
+    return false;
 }
 
 int main(void) {
@@ -85,27 +91,75 @@ sizes are taken first, then fill panels share what's left. Panels can be
 hidden (`term_panel_show`) or removed (`term_panel_destroy`), and their
 siblings reflow.
 
-**Drawing.** Panels are redrawn from scratch every frame. To draw your own
-content, set a draw callback with `term_panel_set_draw`, then use
-`term_panel_print`, `_printf`, `_putc`, `_move` and `_set_attr` inside it.
-Output is clipped to the panel's content area.
+**Drawing.** Output is retained, like curses: what you print into a panel
+with `term_panel_print`, `_printf`, `_putc`, `_move` and `_set_attr` stays
+there until you overwrite it or call `term_panel_clear`. Print whenever your
+state changes, typically in the update function; only the cells that changed
+are redrawn. Output is clipped to the panel's content area, and only panels
+without children hold content.
+
+**Color.** `term_panel_set_colors(panel, fg, bg)` takes palette indices:
+`TERM_COLOR_*` names common ones in graphx's default palette, and any index
+from 0 to 255 works. Like the attribute, colors apply to what is printed next
+and to `term_panel_clear`; widgets, borders and titles are drawn in them.
+Panels split from a panel start with its colors, so coloring a dialog colors
+everything in it. `TERM_ATTR_REVERSE` swaps a panel's two colors. The default
+is white on black.
 
 **Widgets** turn a panel into one with built-in content and key handling:
-`term_make_text`, `term_make_list`, `term_make_input`, `term_make_log` and
-`term_make_progress`. Any panel can also have a border and a title.
+`term_make_text`, `term_make_button`, `term_make_checkbox`, `term_make_list`,
+`term_make_input` and `term_make_progress`. A text widget copies its text and
+can grow with `term_text_append`; with `term_text_autoscroll` it follows the
+end, which makes it a log. A panel that holds other panels is a container:
+give it a border and title with `term_panel_set_border` and
+`term_panel_set_title`.
 
-**Events.** Your update function receives:
+Widgets draw in the panel's attribute (`term_panel_set_attr`) and colors,
+and show focus with its focus attribute (`term_panel_set_focus_attr`); text
+can be centered
+with `term_panel_set_align`. To build your own widget, make a panel
+focusable, give it a key handler with `term_panel_set_keys`, print its
+content, and report changes with `term_panel_send(panel, TERM_EV_CHANGE,
+value)`.
+
+**Scenes.** `term_root(ctx)` is the first scene. `term_scene_new(ctx,
+handler, state)` creates another full-screen scene, and `term_scene_switch`
+shows it. Only the active scene is drawn and gets events; the others keep
+their content until you switch back. A scene's handler hears
+`TERM_EV_SCENE_ENTER` and `TERM_EV_SCENE_LEAVE` when it's switched to or away
+from.
+
+**Overlays.** `term_overlay_open(ctx, col, row, w, h)` or
+`term_overlay_open_centered(ctx, w, h)` returns a panel drawn on top of the
+active scene; split it and fill it like any panel. `term_overlay_close()`
+removes it and gives focus back to the panel that had it when the overlay
+opened, if focus was inside the overlay or empty. Overlays aren't modal: your
+app can move focus between an overlay and what's under it.
+
+**Events.** Handlers receive:
 
 - `TERM_EV_START`, once before the first frame
 - `TERM_EV_KEY`, for keys the focused widget didn't use
-- `TERM_EV_SELECT`, when a list item is chosen with `[enter]`
-- `TERM_EV_SUBMIT`, when an input is submitted with `[enter]`
+- `TERM_EV_SUBMIT`, when the user confirms with `[enter]`: an input, a button, or a list item (`value` is its index)
+- `TERM_EV_CHANGE`, when the user changes a widget: moves a list selection, edits an input, or toggles a checkbox
+- `TERM_EV_FOCUS_LOST`, when the focused panel is hidden or destroyed
 - `TERM_EV_TICK`, every interval set with `term_set_tick(ctx, ms)`
 
-`[vars]` moves focus to the next focusable panel. `[alpha]` types one
-upper-case letter and `[2nd][alpha]` locks alpha; `term_alpha_mode()` reports
-the current state. `term_quit(ctx, result)` ends `term_run()`, which returns
-`result`.
+An event goes to the active scene's handler first, then to the global handler
+passed to `term_run()`. A handler returns `true` when it has handled the event,
+which stops it there.
+
+**Focus.** Your app moves focus with `term_focus(ctx, panel)`; nothing is
+focused until it does, and titrmlib never moves it on its own. `[vars]` is an
+ordinary key (`TERM_KEY_VARS`), so you can use it to cycle focus, as the demo
+does. Switching scenes clears focus if it was on the old scene. Input, list,
+button and checkbox widgets are focusable; other panels, such as a text log
+that should scroll, opt in with `term_panel_set_focusable`.
+
+**Keys.** `[alpha]` types one upper-case letter and `[2nd][alpha]` locks
+alpha; `[alpha]` itself arrives as `TERM_KEY_ALPHA`, and `term_alpha_mode()`
+reports the state. Held arrow keys and `[del]` repeat. `term_quit(ctx,
+result)` ends `term_run()`, which returns `result`.
 
 **Special characters.** Codes 0x80–0xFF hold box-drawing characters and
 icons, named `TERM_CH_*` (e.g. `TERM_CH_CHECK`). The same characters as string
@@ -114,8 +168,9 @@ literals are `TERM_S_*`: `TERM_S_CHECK " Connected"`. The full table is in
 
 ## Limits
 
-- One built-in font. Two colors: light on dark, with `TERM_ATTR_REVERSE` to
-  invert a cell.
+- One built-in font, and one attribute (`TERM_ATTR_REVERSE`) besides colors.
+- Screens using many color pairs at once draw more slowly: the pixel tables for
+  the six most recent pairs are cached.
 - Up to `TERM_MAX_PANELS` (32) panels, and `TERM_INPUT_MAX` (48) characters in
   an input field.
 - `TERM_LINE_GAP` 0 gives 34 rows instead of 30, but capitals and digits then

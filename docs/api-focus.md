@@ -4,15 +4,16 @@
 
 Which panel receives keys.
 
-Widgets that take input (list, input, log) are focusable by default; any panel can opt in. [vars] moves focus forward in tree order.
+Keys go to the focused panel's widget first, and to the app if the widget doesn't use them. The app decides where focus goes: titrmlib never moves it on its own. Nothing is focused until the app calls [term_focus()](#term_focus). If the focused panel is hidden or destroyed, focus becomes empty and the app gets TERM_EV_FOCUS_LOST.
+
+Widgets that take input (list, input, button, checkbox) are focusable by default; any other panel can opt in with [term_panel_set_focusable()](#term_panel_set_focusable), such as a text widget that should scroll with up/down.
 
 ## Functions
 
 | Return | Name | Description |
 |--------|------|-------------|
 | `void` | [`term_panel_set_focusable`](#term_panel_set_focusable)  | Lets a panel take focus, or stops it. |
-| `void` | [`term_focus`](#term_focus)  | Moves focus to `panel` (making it focusable), or clears it with NULL. |
-| `void` | [`term_focus_next`](#term_focus_next)  | Moves focus to the next focusable panel in tree order, as [vars] does. |
+| `void` | [`term_focus`](#term_focus)  | Moves focus to `panel`, or clears it with NULL. Ignored for a panel that isn't focusable. |
 | [`term_panel_t`](api-types.md#term_panel_t) * | [`term_focused`](#term_focused)  | The focused panel, or NULL. |
 
 ---
@@ -23,7 +24,7 @@ Widgets that take input (list, input, log) are focusable by default; any panel c
 void term_panel_set_focusable(term_panel_t * panel, bool focusable)
 ```
 
-Defined in src/titrm.h:249
+Defined in src/titrm.h:347
 
 Lets a panel take focus, or stops it.
 
@@ -35,21 +36,9 @@ Lets a panel take focus, or stops it.
 void term_focus(term_ctx_t * ctx, term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:252
+Defined in src/titrm.h:350
 
-Moves focus to `panel` (making it focusable), or clears it with NULL.
-
----
-
-### term_focus_next
-
-```cpp
-void term_focus_next(term_ctx_t * ctx)
-```
-
-Defined in src/titrm.h:255
-
-Moves focus to the next focusable panel in tree order, as [vars] does.
+Moves focus to `panel`, or clears it with NULL. Ignored for a panel that isn't focusable.
 
 ---
 
@@ -59,7 +48,7 @@ Moves focus to the next focusable panel in tree order, as [vars] does.
 term_panel_t * term_focused(const term_ctx_t * ctx)
 ```
 
-Defined in src/titrm.h:258
+Defined in src/titrm.h:353
 
 The focused panel, or NULL.
 

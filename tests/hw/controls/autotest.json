@@ -1,0 +1,125 @@
+{
+  "transfer_files": [
+    "bin/hw_controls/TTCONTRL.8xp"
+  ],
+  "target": {
+    "name": "TTCONTRL",
+    "isASM": true
+  },
+  "sequence": [
+    "action|launch",
+    "hashWait|1",
+    "key|enter",
+    "hashWait|2",
+    "key|vars",
+    "key|vars",
+    "key|right",
+    "key|right",
+    "key|left",
+    "key|right",
+    "hashWait|3",
+    "key|vars",
+    "hashWait|4",
+    "key|enter",
+    "hashWait|5",
+    "key|right",
+    "key|enter",
+    "hashWait|6",
+    "key|up",
+    "key|up",
+    "hashWait|7",
+    "key|down",
+    "key|down",
+    "key|down",
+    "hashWait|8",
+    "key|clear",
+    "hashWait|9"
+  ],
+  "hashes": {
+    "1": {
+      "description": "Start: first checkbox focused",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "7C087811"
+      ]
+    },
+    "2": {
+      "description": "[enter] checked it: TERM_EV_CHANGE 1",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "B9565111"
+      ]
+    },
+    "3": {
+      "description": "Custom counter focused and moved to 2, sending TERM_EV_CHANGE",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "361F4298"
+      ]
+    },
+    "4": {
+      "description": "OK button focused",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "9E536781"
+      ]
+    },
+    "5": {
+      "description": "[enter] on OK: TERM_EV_SUBMIT",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "84A92817"
+      ]
+    },
+    "6": {
+      "description": "[right] moved focus to Cancel, [enter] submitted it",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "83034CC6"
+      ]
+    },
+    "7": {
+      "description": "[up] twice: from the buttons to the counter, then to the second checkbox",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "72632C49"
+      ]
+    },
+    "8": {
+      "description": "[down] three times: counter, OK, then stays on OK",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "3C8ABD01"
+      ]
+    },
+    "9": {
+      "description": "Program exited to a cleared home screen",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_16_size",
+      "expected_CRCs": [
+        "FFAF89BA",
+        "101734A5",
+        "9DA19F44",
+        "A32840C8",
+        "349F4775"
+      ]
+    }
+  }
+}

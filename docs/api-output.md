@@ -4,33 +4,17 @@
 
 Drawing text into a panel.
 
-Everything here is clipped to the panel's content area, whatever its depth in the tree. Panels are redrawn from scratch every frame: put output in a draw callback rather than expecting it to persist.
+Output is retained: what is printed into a panel stays there, and is shown again every frame, until it is overwritten or cleared. The cursor and attribute persist too. Only the parts of the screen that change are redrawn.
 
-## Typedefs
-
-| Return | Name | Description |
-|--------|------|-------------|
-| `void(*)` | [`term_draw_fn`](#term_draw_fn)  | A draw callback; see [term_panel_set_draw()](#term_panel_set_draw). |
-
----
-
-### term_draw_fn
-
-```cpp
-using term_draw_fn = void(*)
-```
-
-Defined in src/titrm.h:273
-
-A draw callback; see [term_panel_set_draw()](#term_panel_set_draw).
+Everything here is clipped to the panel's content area, whatever its depth in the tree. Only panels without children hold content; output to a panel that has been split is ignored. Resizing a panel keeps the part of its content that still fits, anchored at the top left.
 
 ## Functions
 
 | Return | Name | Description |
 |--------|------|-------------|
-| `void` | [`term_panel_set_draw`](#term_panel_set_draw)  | Sets the panel's draw callback, called each frame with a blank panel, its cursor at 0,0. |
 | `void` | [`term_panel_move`](#term_panel_move)  | Moves the panel's cursor. |
 | `void` | [`term_panel_set_attr`](#term_panel_set_attr)  | Sets the attribute (TERM_ATTR_*) for the text printed next. |
+| `void` | [`term_panel_set_colors`](#term_panel_set_colors)  | Sets the panel's colors (TERM_COLOR_*, or any palette index). |
 | `void` | [`term_panel_wrap`](#term_panel_wrap)  | Wrap at the right edge instead of clipping (the default). |
 | `void` | [`term_panel_putc`](#term_panel_putc)  | Prints one character. '\n' starts a new line. |
 | `void` | [`term_panel_print`](#term_panel_print)  | Prints a string at the cursor. |
@@ -40,25 +24,13 @@ A draw callback; see [term_panel_set_draw()](#term_panel_set_draw).
 
 ---
 
-### term_panel_set_draw
-
-```cpp
-void term_panel_set_draw(term_panel_t * panel, term_draw_fn draw, void * user)
-```
-
-Defined in src/titrm.h:276
-
-Sets the panel's draw callback, called each frame with a blank panel, its cursor at 0,0.
-
----
-
 ### term_panel_move
 
 ```cpp
 void term_panel_move(term_panel_t * panel, int col, int row)
 ```
 
-Defined in src/titrm.h:279
+Defined in src/titrm.h:373
 
 Moves the panel's cursor.
 
@@ -70,9 +42,23 @@ Moves the panel's cursor.
 void term_panel_set_attr(term_panel_t * panel, uint8_t attr)
 ```
 
-Defined in src/titrm.h:282
+Defined in src/titrm.h:376
 
 Sets the attribute (TERM_ATTR_*) for the text printed next.
+
+---
+
+### term_panel_set_colors
+
+```cpp
+void term_panel_set_colors(term_panel_t * panel, uint8_t fg, uint8_t bg)
+```
+
+Defined in src/titrm.h:386
+
+Sets the panel's colors (TERM_COLOR_*, or any palette index).
+
+Like the attribute, they apply to what is printed next, and clearing fills the panel with the background. Widgets, the border and the title are drawn in them, and a panel with children fills its area with its background. Panels split from this one start with its colors. White on black by default.
 
 ---
 
@@ -82,7 +68,7 @@ Sets the attribute (TERM_ATTR_*) for the text printed next.
 void term_panel_wrap(term_panel_t * panel, bool wrap)
 ```
 
-Defined in src/titrm.h:285
+Defined in src/titrm.h:389
 
 Wrap at the right edge instead of clipping (the default).
 
@@ -94,7 +80,7 @@ Wrap at the right edge instead of clipping (the default).
 void term_panel_putc(term_panel_t * panel, char c)
 ```
 
-Defined in src/titrm.h:288
+Defined in src/titrm.h:392
 
 Prints one character. '\n' starts a new line.
 
@@ -106,7 +92,7 @@ Prints one character. '\n' starts a new line.
 void term_panel_print(term_panel_t * panel, const char * str)
 ```
 
-Defined in src/titrm.h:291
+Defined in src/titrm.h:395
 
 Prints a string at the cursor.
 
@@ -118,7 +104,7 @@ Prints a string at the cursor.
 void term_panel_printf(term_panel_t * panel, const char * fmt, ...)
 ```
 
-Defined in src/titrm.h:294
+Defined in src/titrm.h:398
 
 Prints formatted text at the cursor.
 
@@ -130,7 +116,7 @@ Prints formatted text at the cursor.
 void term_panel_repeat(term_panel_t * panel, char c, int count)
 ```
 
-Defined in src/titrm.h:297
+Defined in src/titrm.h:401
 
 Prints `c``count` times.
 
@@ -142,7 +128,7 @@ Prints `c``count` times.
 void term_panel_clear(term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:300
+Defined in src/titrm.h:404
 
 Blanks the panel's content area and moves the cursor to 0,0.
 

@@ -2,11 +2,14 @@
 
 #include "titrm.h"
 
-static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+/* The event handler: return true for events it handled. */
+static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     (void)state;
     if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR) {
         term_quit(ctx, 0);
+        return true;
     }
+    return false;
 }
 
 int main(void) {

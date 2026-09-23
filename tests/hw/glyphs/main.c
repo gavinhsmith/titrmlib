@@ -14,9 +14,7 @@
 
 #include "titrm.h"
 
-static void draw_table(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    (void)user;
+static void print_table(term_panel_t *p) {
     term_panel_print(p, "   0 1 2 3 4 5 6 7 8 9 A B C D E F");
     for (int hi = 0; hi < 16; hi++) {
         term_panel_move(p, 0, hi + 1);
@@ -30,9 +28,7 @@ static void draw_table(term_ctx_t *ctx, term_panel_t *p, void *user) {
     }
 }
 
-static void draw_reverse(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    (void)user;
+static void print_reverse(term_panel_t *p) {
     term_panel_set_attr(p, TERM_ATTR_REVERSE);
     term_panel_print(p, "ABC abc 123\n");
     term_panel_print(p, TERM_S_CHECK TERM_S_CROSSMARK TERM_S_DOT TERM_S_DOT_EMPTY
@@ -47,9 +43,7 @@ static void draw_reverse(term_ctx_t *ctx, term_panel_t *p, void *user) {
     term_panel_repeat(p, ' ', term_panel_width(p));
 }
 
-static void draw_joins(term_ctx_t *ctx, term_panel_t *p, void *user) {
-    (void)ctx;
-    (void)user;
+static void print_joins(term_panel_t *p) {
     term_panel_print(p,
                      TERM_S_TL TERM_S_HLINE TERM_S_HLINE TERM_S_TTEE TERM_S_HLINE TERM_S_HLINE TERM_S_TR "\n"
                      TERM_S_VLINE "AB" TERM_S_VLINE "CD" TERM_S_VLINE "\n"
@@ -61,11 +55,12 @@ static void draw_joins(term_ctx_t *ctx, term_panel_t *p, void *user) {
                      TERM_S_SHADE TERM_S_SHADE TERM_S_BLOCK TERM_S_BLOCK TERM_S_SHADE TERM_S_SHADE " fill");
 }
 
-static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     (void)state;
     if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR) {
         term_quit(ctx, 0);
     }
+    return true;
 }
 
 int main(void) {
@@ -79,16 +74,13 @@ int main(void) {
     term_panel_t *side = term_split(top, TERM_HORIZONTAL, TERM_FILL);
     term_panel_set_border(table, true);
     term_panel_set_title(table, "Glyphs");
-    term_panel_set_draw(table, draw_table, NULL);
 
     term_panel_t *reverse = term_split(side, TERM_VERTICAL, TERM_FIXED(6));
     term_panel_t *joins = term_split(side, TERM_VERTICAL, TERM_FILL);
     term_panel_set_border(reverse, true);
     term_panel_set_title(reverse, "Reverse");
-    term_panel_set_draw(reverse, draw_reverse, NULL);
     term_panel_set_border(joins, true);
     term_panel_set_title(joins, "Joins");
-    term_panel_set_draw(joins, draw_joins, NULL);
 
     term_panel_set_border(text, true);
     term_panel_set_title(text, "Text");
@@ -98,6 +90,11 @@ int main(void) {
                    "0123456789 !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~\n"
                    "  Indented, then a word too long for one line: "
                    "Supercalifragilisticexpialidocious-and-then-some-more-letters.");
+
+    /* Output is retained: printed once, shown every frame. */
+    print_table(table);
+    print_reverse(reverse);
+    print_joins(joins);
 
     term_run(ctx, on_event, NULL);
     term_shutdown(ctx);

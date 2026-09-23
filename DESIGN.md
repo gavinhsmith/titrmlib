@@ -1,7 +1,7 @@
 # Phase 2 design
 
-Status: agreed, not started. titrmlib is at v0.1.0, so the API may change
-freely until v1.0.
+Status: in progress on the `phase-2` branch; see [Progress](#progress).
+titrmlib is at v0.1.0, so the API may change freely until v1.0.
 
 Phase 2 reworks how titrmlib renders and routes input, then adds scenes,
 overlays, a revised widget set and color. Function and type names below are
@@ -142,12 +142,134 @@ Each step keeps the unit tests and hardware tests passing, with screens
 re-recorded where output changes on purpose. The `perf` budgets tighten to
 the 50 ms goal once step 1 lands.
 
+## Progress
+
+| Step | State |
+|---|---|
+| 1. Retained panels, change-based rendering, key queue | Done |
+| 2. Focus and event changes | Done |
+| 3. Scenes | Done |
+| 4. Overlays | Done |
+| 5. Widget set and demo | Done |
+| 6. Color | Done |
+
+Steps 1 and 2 were built together: with retained output, the app has to be
+told about everything that changes what it shows, which is what step 2 adds.
+
+### Decisions made while building steps 1–2
+
+- **Composing.** When anything changes, a frame copies every visible panel's
+  retained cells into the screen grid; only changed cells are then drawn. When
+  nothing changed, the frame does nothing. Tracking dirty regions per panel
+  was not needed: copying cells is cheap, and this also suits overlays.
+- **Only leaf panels hold content.** A panel with children has no cells, and
+  output to it is ignored. This keeps memory to about one screen of cells.
+  Splitting a panel discards what was printed into it.
+- **Resizing** keeps the part of a panel's content that still fits, anchored
+  at the top left. Widgets redraw at the new size; plain panels don't reflow.
+- **Keypad input uses keypadc, not `os_GetCSC()`.** Measured in CEmu,
+  `os_GetCSC()` takes about 19 ms per call and `kb_Scan()` about 1.3 ms.
+  titrmlib finds presses by comparing scans, queues them, and repeats held
+  arrows and `[del]` itself (400 ms delay, then about 12 per second), since the
+  OS no longer does. Keys already down at startup are ignored.
+- **`[alpha]` reaches the app** as `TERM_KEY_ALPHA`, after the alpha state
+  changes, so status displays can update.
+- **`TERM_EV_CHANGE` is only for changes the user makes** (moving a list
+  selection, editing an input). Changes the app makes itself, like
+  `term_list_select()` or `term_input_set()`, send nothing.
+- **`term_focus()` ignores panels that aren't focusable.** Input, list and log
+  widgets are focusable; other panels opt in with
+  `term_panel_set_focusable()`.
+- **`TERM_EV_FOCUS_LOST`** carries the hidden panel, or NULL if it was
+  destroyed.
+- **Performance:** a typical update (one row changed) measures ~46 ms against
+  the 50 ms goal; the `perf` hardware test now fails above 50 ms.
+
+### Decisions made while building step 3
+
+- **Handlers return `bool`.** `term_update_fn` returns true when it handled
+  the event, which stops it going further along the chain. This is how a
+  scene's handler consumes an event before the global handler sees it.
+- **A scene is a root panel.** `term_scene_new()` returns the scene's root
+  panel; `term_root()` is the first scene, created by `term_init()`.
+- **The first scene gets `TERM_EV_SCENE_ENTER`** when `term_run()` starts,
+  after `TERM_EV_START`. Switching before `term_run()` sends nothing.
+- **Switching away from the focused panel's scene clears focus** and sends
+  `TERM_EV_FOCUS_LOST`, the same rule as hiding the focused panel. A panel can
+  only hold focus while it is in the active scene.
+- **Destroying scenes:** `term_panel_destroy()` removes a scene that isn't
+  active; the active scene and `term_root()` can't be destroyed.
+- **The panel pool** (`TERM_MAX_PANELS`, 32) is shared by all scenes.
+
+### Decisions made while building step 4
+
+- **API:** `term_overlay_open(ctx, col, row, w, h)`,
+  `term_overlay_open_centered(ctx, w, h)` and `term_overlay_close(overlay)`.
+  An overlay is a root panel; `term_panel_destroy()` on it closes it.
+- **An overlay belongs to the scene that was active when it opened**, and is
+  shown and can hold focus only while that scene is active. Removing a scene
+  closes its overlays.
+- **Overlays are opaque** and drawn in the order they were opened. Up to
+  `TERM_MAX_OVERLAYS` (8) can be open.
+- **The rectangle is clipped to the grid**; overlays don't move or resize once
+  open (not needed yet).
+- **If the panel an overlay would give focus back to is destroyed** while the
+  overlay is open, the overlay forgets it; closing then leaves focus empty and
+  sends `TERM_EV_FOCUS_LOST` if focus was inside the overlay.
+- **Hardware test runner:** the runner now waits a second after transferring
+  a program before launching it. Launching immediately after a 27 KB transfer
+  dropped the first keys of the `Asm(` launch on the OS 5.3 ROM.
+
+### Decisions made while building step 5
+
+- **Panel properties** used by the widgets and by custom widgets:
+  `term_panel_set_focus_attr` (how focus shows: title, list selection, input
+  cursor, checkbox; reverse video by default), `term_panel_set_align` (left
+  or centered text), `term_panel_set_submit` (`[enter]` sends
+  `TERM_EV_SUBMIT`), `term_panel_set_keys` (a key handler that runs before the
+  built-in widget) and `term_panel_send` (a widget's own events).
+  `term_panel_set_attr` is also the attribute widgets draw in.
+- **Text** copies its text (no lifetime rules), grows with
+  `term_text_append`/`term_text_appendf` and keeps at most
+  `term_text_limit` bytes (1024 by default), dropping the oldest lines.
+  `term_text_autoscroll` follows the end until the user scrolls up; scrolling
+  back to the end resumes it. A focusable text widget scrolls with up/down,
+  and arrows at the right edge show more text above or below. This replaces
+  the log widget (`term_make_log` and friends are removed).
+- **Container** needs no API: a plain panel with children, with the existing
+  border and title.
+- **Button:** a text widget, centered, reverse video, focusable, with submit
+  on. A focused button shows an arrow at its left edge, since its colors
+  already stand out.
+- **Checkbox:** `[x] label` with a check mark glyph; `[enter]` toggles it and
+  sends `TERM_EV_CHANGE` with value 1 or 0; `term_checkbox_set` sends nothing.
+- **Deferred until needed:** input options (masking, digits only, a shorter
+  maximum) and list multi-select.
+- **The demo** now uses a text log, a password dialog (overlay with
+  buttons), and a help scene; `demo.gif` shows the stage 1 demo and needs
+  re-recording.
+
+### Decisions made while building step 6
+
+- **API:** `term_panel_set_colors(panel, fg, bg)`, palette indices, with
+  `TERM_COLOR_*` for common ones. It behaves like `term_panel_set_attr`:
+  it applies to output that follows, to clearing and to widgets, which
+  redraw in it. There are no per-cell colors beyond that and no separate
+  focus colors: `TERM_ATTR_REVERSE` swaps the panel's colors, so focus shows
+  in color already.
+- **Inheritance:** a panel split from another starts with its colors, and a
+  container fills its area when its background differs from its parent's.
+  Coloring an overlay colors the whole dialog.
+- **Drawing:** one 64-mask pixel table per color pair, cached for white on
+  black plus the five most recent pairs. A per-pixel loop took a colored
+  full screen from ~480 ms to ~750 ms; with the tables it is ~440 ms.
+- **Orange:** graphx's `gfx_orange` (0xE3) shows as yellow in the default
+  palette (index i is the 1555 color `i | i << 8`), so `TERM_COLOR_ORANGE`
+  is 0xE1. `tests/hw/run.py` now renders 8bpp dumps with that palette.
+
 ## Still to decide
 
-- The panel pool: whether `TERM_MAX_PANELS` (32) is enough with several
-  scenes and overlays, or whether it should grow or be per scene.
+- The panel pool: 32 panels shared by all scenes and overlays has been enough
+  so far. Revisit if an app runs short.
 - Memory: retained cells cost roughly one screen of cells per scene plus
-  overlays. Budget and limits to be checked on hardware.
-- Exact text widget API for appending and scrolling.
-- Input options: maximum length, digits only, password masking.
-- List options: multi-select with check marks.
+  overlays. Check on hardware with a larger app.

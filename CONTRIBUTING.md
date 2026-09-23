@@ -31,7 +31,7 @@ You need:
 | `src/` | The library. `titrm.h` is the whole public API |
 | `src/FONT.md` | Character code → glyph → purpose table (generated) |
 | `examples/hello/` | The smallest useful program |
-| `examples/demo/` | A mock Wi-Fi manager using every feature |
+| `examples/demo/` | A mock Wi-Fi manager using every feature: scenes, an overlay dialog with buttons, a log |
 | `docs/` | API reference (generated) |
 | `Doxyfile` | Doxygen settings for the API docs |
 | `tools/gen_font.py` | Converts `tools/petabyt-font/font.h` into `src/titrm_font.c`, `src/titrm_chars.h` and `src/FONT.md` |
@@ -104,8 +104,8 @@ make -C tests CC=gcc SANITIZE=         # without ASan/UBSan, e.g. MinGW gcc on W
 
 The unit tests don't need CEdev or a calculator. They compile the library with
 the host compiler against the headers in `tests/stubs/`. Drawing goes to an
-in-memory 320×240 framebuffer and the keypad replays a scripted list of scan
-codes, so layout, clipping, focus, widgets, key handling and the run loop are
+in-memory 320×240 framebuffer and a stand-in keypad presses a scripted list of
+keys, so layout, clipping, focus, widgets, key handling and the run loop are
 tested through the public API.
 
 ## Hardware tests
@@ -149,9 +149,13 @@ python tests/hw/run.py --help          # all options
 | `canary` | Only the setup: a graphx program launches and exits. If it fails, check the ROM first |
 | `glyphs` | Every character code, reverse video, box-drawing joins, word wrap |
 | `layout` | Fixed, percent and weighted-fill sizes, nesting, clipping, hide/show reflow, destroying a subtree |
-| `widgets` | List, input and log driven by key presses: wrap-around, `[enter]`, `[vars]` focus, alpha and alpha lock, `[del]`, scrollback |
+| `colors` | Every `TERM_COLOR_*`, and a colored bordered box with a list, checkbox and button inheriting its colors, and focus moving between them with [vars] and the arrows |
+| `controls` | Checkboxes, a custom widget built with a key handler, and buttons: toggling, custom change events, focus markers, submitting, moving focus with [vars] and the arrows |
+| `widgets` | List, input and a text log driven by key presses: wrap-around, `[enter]`, focus moved by the app on `[vars]`, alpha and alpha lock, `[del]`, scrollback |
 | `ticks` | `term_set_tick` with the real `clock()`: 20 ticks of 100 ms arrive on time |
-| `perf` | Frame times for an unchanged screen, a one-row change and a full redraw stay within budget; a miss shows the measured time |
+| `scenes` | Switching between two scenes: each keeps its content and list selection, a scene's handler refocuses on entry, and a hidden scene can be printed into |
+| `overlays` | A centered dialog over a list: focus moved into it, typing, submitting and cancelling, focus given back, and the screen underneath restored exactly |
+| `perf` | Update times when nothing changes, when one row changes and when the whole screen changes (in white on black and in color) stay within budget (the one-row budget is the 50 ms goal); a miss shows the measured time |
 | `selfcheck` | Checks that run on the calculator and read pixels back from the screen: layout, 24-bit `printf`, clipping, the log ring, focus, panel limits |
 
 Every test ends by pressing `[clear]` and checking for a cleared home screen.

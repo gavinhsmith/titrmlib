@@ -1,0 +1,75 @@
+{
+  "transfer_files": [
+    "bin/hw_scenes/TTSCENES.8xp"
+  ],
+  "target": {
+    "name": "TTSCENES",
+    "isASM": true
+  },
+  "sequence": [
+    "action|launch",
+    "hashWait|1",
+    "key|window",
+    "hashWait|2",
+    "key|down",
+    "key|enter",
+    "hashWait|3",
+    "key|window",
+    "hashWait|4",
+    "key|window",
+    "hashWait|3",
+    "key|clear",
+    "hashWait|5"
+  ],
+  "hashes": {
+    "1": {
+      "description": "Scene A at start",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "48A84963"
+      ]
+    },
+    "2": {
+      "description": "Scene B entered: its handler focused the list",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "27CF7DED"
+      ]
+    },
+    "3": {
+      "description": "Scene B after moving to item two and picking it",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "0FD3A385"
+      ]
+    },
+    "4": {
+      "description": "Back on scene A: shows the pick made while it was hidden, 2 switches",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "0A04DC0F"
+      ]
+    },
+    "5": {
+      "description": "Program exited to a cleared home screen",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_16_size",
+      "expected_CRCs": [
+        "FFAF89BA",
+        "101734A5",
+        "9DA19F44",
+        "A32840C8",
+        "349F4775"
+      ]
+    }
+  }
+}

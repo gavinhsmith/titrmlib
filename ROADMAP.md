@@ -3,15 +3,12 @@
 ## Planned
 
 - **Phase 2:** retained panels and change-based rendering, a key queue,
-  scenes, overlays, a revised widget set and color. The agreed design is in
-  [DESIGN.md](DESIGN.md).
+  scenes, overlays, a revised widget set and color. Built on the `phase-2`
+  branch, to be reviewed and merged. The design is in [DESIGN.md](DESIGN.md).
+- Re-record `demo.gif` with the phase 2 demo.
 
 ## Known issues
 
-- **Quick repeated key presses can merge.** `os_GetCSC()` holds a single key
-  between polls, so two presses within one frame count as one. A typical update
-  takes about 105 ms and a full-screen redraw about 400 ms (emulated). Phase 2
-  addresses both.
 - **Hardware tests don't run in CI.** They need a TI-84 Plus CE ROM, which can't
   be distributed. CI only builds the test programs.
 

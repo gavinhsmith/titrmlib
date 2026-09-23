@@ -1,0 +1,74 @@
+{
+  "transfer_files": [
+    "bin/hw_colors/TTCOLORS.8xp"
+  ],
+  "target": {
+    "name": "TTCOLORS",
+    "isASM": true
+  },
+  "sequence": [
+    "action|launch",
+    "hashWait|1",
+    "key|down",
+    "hashWait|2",
+    "key|vars",
+    "key|down",
+    "hashWait|3",
+    "key|up",
+    "key|up",
+    "hashWait|4",
+    "key|clear",
+    "hashWait|5"
+  ],
+  "hashes": {
+    "1": {
+      "description": "Colored title, swatches of every TERM_COLOR_*, and a colored box with a focused list, checkbox and button",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "D29BFD17"
+      ]
+    },
+    "2": {
+      "description": "[down] moved the list selection",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "3D1CFFD2"
+      ]
+    },
+    "3": {
+      "description": "[vars] then [down]: focus moved from the list to the checkbox to the button",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "AA68A449"
+      ]
+    },
+    "4": {
+      "description": "[up] twice: focus back on the list, its selection unchanged",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "3D1CFFD2"
+      ]
+    },
+    "5": {
+      "description": "Program exited to a cleared home screen",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_16_size",
+      "expected_CRCs": [
+        "FFAF89BA",
+        "101734A5",
+        "9DA19F44",
+        "A32840C8",
+        "349F4775"
+      ]
+    }
+  }
+}
