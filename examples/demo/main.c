@@ -217,6 +217,22 @@ static bool dialog_event(term_ctx_t *ctx, demo_t *d, const term_event_t *ev) {
         focus_next(ctx, order, 3);
         return true;
     }
+    /* Arrows the focused widget doesn't use move between the password (it
+     * keeps left/right for its cursor) and the buttons below it. */
+    term_panel_t *now = term_focused(ctx);
+    bool on_button = now == d->connect_button || now == d->cancel_button;
+    if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_DOWN && now == d->password) {
+        term_focus(ctx, d->connect_button);
+        return true;
+    }
+    if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_UP && on_button) {
+        term_focus(ctx, d->password);
+        return true;
+    }
+    if (ev->type == TERM_EV_KEY && (ev->key == TERM_KEY_LEFT || ev->key == TERM_KEY_RIGHT) && on_button) {
+        term_focus(ctx, now == d->connect_button ? d->cancel_button : d->connect_button);
+        return true;
+    }
     return false;
 }
 
@@ -300,7 +316,7 @@ static void build_help(demo_t *d) {
                    "Keys\n"
                    "  up/down   pick a network\n"
                    "  [enter]   connect (password if secured)\n"
-                   "  [vars]    move focus\n"
+                   "  [vars]    move focus (arrows too, in the dialog)\n"
                    "  [y=]      show or hide the details\n"
                    "  [window]  clear the log\n"
                    "  [alpha]   type letters in the command box\n"

@@ -7,7 +7,8 @@
  *              its selection and title are reversed), a checkbox, a button,
  *              and a gap showing the box's own background
  *
- * [down] moves the list selection. [clear] exits.
+ * [down] moves the list selection. [vars] moves focus to the next control, and
+ * up/down do too when the focused control doesn't use them. [clear] exits.
  */
 
 #include "titrm.h"
@@ -23,13 +24,31 @@ static const struct {
     {"blue", TERM_COLOR_BLUE},     {"purple", TERM_COLOR_PURPLE}, {"pink", TERM_COLOR_PINK},
 };
 
+static term_panel_t *order[3]; /* focus order: list, checkbox, button */
+
 static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     (void)state;
-    if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR) {
-        term_quit(ctx, 0);
-        return true;
+    if (ev->type != TERM_EV_KEY) {
+        return false;
     }
-    return false;
+    int at = 0;
+    for (int i = 0; i < 3; i++) {
+        if (order[i] == term_focused(ctx)) {
+            at = i;
+        }
+    }
+    if (ev->key == TERM_KEY_VARS) {
+        term_focus(ctx, order[(at + 1) % 3]);
+    } else if (ev->key == TERM_KEY_DOWN && at < 2) {
+        term_focus(ctx, order[at + 1]);
+    } else if (ev->key == TERM_KEY_UP && at > 0) {
+        term_focus(ctx, order[at - 1]);
+    } else if (ev->key == TERM_KEY_CLEAR) {
+        term_quit(ctx, 0);
+    } else {
+        return false;
+    }
+    return true;
 }
 
 int main(void) {
@@ -58,9 +77,14 @@ int main(void) {
     term_panel_t *list = term_split(box, TERM_VERTICAL, TERM_FIXED(3));
     term_make_list(list, items, 3);
     term_split(box, TERM_VERTICAL, TERM_FIXED(1)); /* gap: the box's background */
-    term_make_checkbox(term_split(box, TERM_VERTICAL, TERM_FIXED(1)), "Remember", true);
+    term_panel_t *check = term_split(box, TERM_VERTICAL, TERM_FIXED(1));
+    term_make_checkbox(check, "Remember", true);
     term_split(box, TERM_VERTICAL, TERM_FIXED(1)); /* gap */
-    term_make_button(term_split(box, TERM_VERTICAL, TERM_FIXED(1)), "OK");
+    term_panel_t *ok = term_split(box, TERM_VERTICAL, TERM_FIXED(1));
+    term_make_button(ok, "OK");
+    order[0] = list;
+    order[1] = check;
+    order[2] = ok;
 
     term_focus(ctx, list);
     term_run(ctx, on_event, NULL);

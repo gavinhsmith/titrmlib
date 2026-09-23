@@ -11,8 +11,14 @@
     "hashWait|1",
     "key|down",
     "hashWait|2",
+    "key|vars",
+    "key|down",
+    "hashWait|3",
+    "key|up",
+    "key|up",
+    "hashWait|4",
     "key|clear",
-    "hashWait|3"
+    "hashWait|5"
   ],
   "hashes": {
     "1": {
@@ -34,6 +40,24 @@
       ]
     },
     "3": {
+      "description": "[vars] then [down]: focus moved from the list to the checkbox to the button",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "AA68A449"
+      ]
+    },
+    "4": {
+      "description": "[up] twice: focus back on the list, its selection unchanged",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "3D1CFFD2"
+      ]
+    },
+    "5": {
       "description": "Program exited to a cleared home screen",
       "timeout": 5000,
       "start": "vram_start",
