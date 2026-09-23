@@ -22,8 +22,10 @@ Update this section when a stage finishes or the release state changes.
 - Tests: host unit tests (`tests/`) and 7 hardware tests in CEmu's
   autotester (`tests/hw/`), passing on OS 5.3 and on arTIfiCE-jailbroken
   OS 5.8.5 ROMs.
-- Docs: API reference built by Doxygen + moxygen into `docs/`, published by
-  GitHub Pages from `main` `/docs` at <https://gavinhsmith.github.io/titrmlib/>.
+- Docs: API reference built by Doxygen + moxygen into `docs/` (index
+  `docs/api.md`). GitHub Pages publishes the repo root from `main` at
+  <https://gavinhsmith.github.io/titrmlib/>, with README.md as the front page
+  and settings in `_config.yml`.
 - CI (`.github/workflows/ci.yml`): unit tests, generated-file drift (font and
   docs), and CEdev builds of the examples and hardware tests.
 - Releases (`.github/workflows/release.yml`): pushing a `v*` tag runs CI,

@@ -67,9 +67,11 @@ match.
 `docs/` is generated from the doc comments in `src/titrm.h`.
 [Doxygen](https://www.doxygen.nl/) reads the header into XML, and
 [moxygen](https://github.com/sourcey/moxygen) turns the XML into one Markdown
-page per group, plus the index `docs/index.md`. GitHub Pages publishes
-`docs/` from `main` as <https://gavinhsmith.github.io/titrmlib/>, using
-`docs/_config.yml`.
+page per group, plus the index `docs/api.md`.
+
+GitHub Pages publishes the repository root from `main` as
+<https://gavinhsmith.github.io/titrmlib/>, with `README.md` as the front page and
+the API reference under `docs/`. Site settings are in `_config.yml`.
 
 In the header:
 

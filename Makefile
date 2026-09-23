@@ -23,14 +23,13 @@ $(EXAMPLES) $(HWTESTS):
 hw-build: $(HWTESTS)
 
 # Regenerates the API reference in docs/ from src/titrm.h: Doxygen reads the
-# header's doc comments into XML, moxygen turns the XML into Markdown. The
-# index becomes docs/index.md, the GitHub Pages landing page.
+# header's doc comments into XML, moxygen turns the XML into Markdown, with the
+# index in docs/api.md.
 docs:
 	$(PYTHON) -c "import os; os.makedirs('obj/doxygen', exist_ok=True)"
 	$(DOXYGEN) Doxyfile
-	$(PYTHON) -c "import glob, os; [os.remove(f) for f in glob.glob('docs/api-*.md') + ['docs/index.md'] if os.path.exists(f)]"
+	$(PYTHON) -c "import glob, os; [os.remove(f) for f in glob.glob('docs/api*.md') if os.path.exists(f)]"
 	$(MOXYGEN) --quiet --groups --logfile obj/moxygen.log --output docs/api-%s.md obj/doxygen/xml
-	$(PYTHON) -c "import os; os.replace('docs/api.md', 'docs/index.md')"
 
 # Builds and runs the hardware tests. Needs AUTOTESTER_ROM; HW_ARGS is passed
 # to run.py, e.g. `make hw-test HW_ARGS="layout widgets"`.

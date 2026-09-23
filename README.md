@@ -1,7 +1,7 @@
 # titrmlib
 
 [![CI](https://github.com/gavinhsmith/titrmlib/actions/workflows/ci.yml/badge.svg)](https://github.com/gavinhsmith/titrmlib/actions/workflows/ci.yml)
-[![API docs](https://img.shields.io/badge/docs-API%20reference-blue)](https://gavinhsmith.github.io/titrmlib/)
+[![API docs](https://img.shields.io/badge/docs-API%20reference-blue)](https://gavinhsmith.github.io/titrmlib/docs/api.html)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE.md)
 [![Platform: TI-84 Plus CE](https://img.shields.io/badge/platform-TI--84%20Plus%20CE-lightgrey)](https://github.com/CE-Programming/toolchain)
 
@@ -75,7 +75,7 @@ reached through `..`.
 
 ## Using it
 
-The whole API is in [`src/titrm.h`](src/titrm.h); the [API reference](https://gavinhsmith.github.io/titrmlib/) lists every function, type and constant.
+The whole API is in [`src/titrm.h`](src/titrm.h); the [API reference](docs/api.md) lists every function, type and constant.
 
 **Panels.** `term_split(parent, dir, size)` adds a child to a panel. `dir` is
 `TERM_HORIZONTAL` (side by side) or `TERM_VERTICAL` (stacked), and every child
@@ -123,7 +123,7 @@ literals are `TERM_S_*`: `TERM_S_CHECK " Connected"`. The full table is in
 
 ## Documentation
 
-- [API reference](https://gavinhsmith.github.io/titrmlib/) (source in [docs/](docs/index.md))
+- [API reference](docs/api.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md): development setup, building, unit and
   hardware tests, reporting issues
 - [ROADMAP.md](ROADMAP.md): planned features and known issues
