@@ -19,6 +19,7 @@ HW_NAME_layout = TTLAYOUT
 HW_NAME_widgets = TTWIDGET
 HW_NAME_ticks = TTTICKS
 HW_NAME_selfcheck = TTSELFCK
+HW_NAME_perf = TTPERF
 
 ifeq ($(EXAMPLE),demo)
 NAME = TITRMDEM

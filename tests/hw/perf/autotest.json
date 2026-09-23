@@ -1,9 +1,9 @@
 {
   "transfer_files": [
-    "bin/hw_glyphs/TTGLYPHS.8xp"
+    "bin/hw_perf/TTPERF.8xp"
   ],
   "target": {
-    "name": "TTGLYPHS",
+    "name": "TTPERF",
     "isASM": true
   },
   "sequence": [
@@ -14,12 +14,12 @@
   ],
   "hashes": {
     "1": {
-      "description": "Glyph sheet, reverse video, box joins and wrapped text",
-      "timeout": 5000,
+      "description": "Idle, full and one-row frames within their time budgets",
+      "timeout": 60000,
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "1DEDD529"
+        "DB0BDD13"
       ]
     },
     "2": {

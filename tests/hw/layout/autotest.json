@@ -6,7 +6,6 @@
     "name": "TTLAYOUT",
     "isASM": true
   },
-  "delay_after_key": 300,
   "sequence": [
     "action|launch",
     "hashWait|1",

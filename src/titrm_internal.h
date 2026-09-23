@@ -29,8 +29,10 @@ struct term_panel {
     term_size_t size;  /* how this panel is sized within its parent */
     const char *title;
 
-    /* Outer rectangle in cells, set by layout. */
+    /* Outer rectangle and content area (inside the border) in cells, set by
+     * layout. */
     uint8_t x, y, w, h;
+    uint8_t ix, iy, iw, ih;
 
     /* Output state, reset at the start of each frame. Inner coordinates. */
     uint8_t cur_x, cur_y;
@@ -94,9 +96,6 @@ struct term_ctx {
 
 /* Writes one cell of the current frame, clipped to `p`'s content area. */
 void term_put(term_panel_t *p, int col, int row, uint8_t ch, uint8_t attr);
-
-/* Content area of a panel: outer rect minus border. */
-void term_inner(const term_panel_t *p, int *x, int *y, int *w, int *h);
 
 /* Delivers a widget event to the app's update callback. */
 void term_emit(term_ctx_t *ctx, term_event_type_t type, term_panel_t *panel, int value);

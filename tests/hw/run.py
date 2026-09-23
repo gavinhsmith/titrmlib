@@ -121,12 +121,14 @@ def artifice_launch(target):
             f"can't select program {target} from the PRGM menu: names must start "
             f"with one of {''.join(sorted(ALPHA_KEYS))}"
         )
-    return [
+    keys = [
         # Install the hook: [apps], jump to "A" (AsmHook2), run it, dismiss.
-        "key|apps", "key|alpha", "key|math", "key|enter", "delay|500", "key|clear",
+        "apps", "alpha", "math", "enter", "clear",
         # [prgm], jump to the program, paste prgmNAME, run it.
-        "key|prgm", "key|alpha", f"key|{ALPHA_KEYS[letter]}", "key|enter", "key|enter",
+        "prgm", "alpha", ALPHA_KEYS[letter], "enter", "enter",
     ]
+    # The OS menus drop keys that come faster than this.
+    return [step for key in keys for step in (f"key|{key}", "delay|300")]
 
 
 # ---- Tests -------------------------------------------------------------------

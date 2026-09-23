@@ -11,11 +11,11 @@
 extern uint8_t stub_fb[GFX_LCD_HEIGHT][GFX_LCD_WIDTH];
 extern int stub_gfx_open;
 
+/* The draw buffer, which titrmlib writes cells into directly. */
+#define gfx_vbuffer stub_fb
+
 void gfx_Begin(void);
 void gfx_End(void);
-uint8_t gfx_SetColor(uint8_t index);
 void gfx_FillScreen(uint8_t index);
-void gfx_HorizLine_NoClip(unsigned int x, uint8_t y, unsigned int length);
-void gfx_FillRectangle_NoClip(unsigned int x, uint8_t y, unsigned int width, uint8_t height);
 
 #endif

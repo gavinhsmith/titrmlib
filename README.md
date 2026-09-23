@@ -105,6 +105,7 @@ make hw-record                        # re-record the expected CRCs of failing s
 | `layout` | Fixed, percent and weighted-fill sizes, 4-deep nesting, clipping, hide/show reflow, destroying a subtree |
 | `widgets` | List, input and log driven by real key presses: wrap-around, `[enter]`, `[vars]` focus, alpha and alpha lock, `[del]`, scrollback |
 | `ticks` | `term_set_tick` with the real `clock()`: 20 ticks of 100 ms arrive at plausible times |
+| `perf` | Frame times for an unchanged screen, a one-row change and a full redraw stay within budget. A miss shows the measured time |
 | `selfcheck` | Assertions that run on the calculator and read pixels back from VRAM: layout math, 24-bit `printf`, clipping, the log ring, focus, pool limits |
 
 Every test ends by pressing `[clear]` and checking that the program returned to a
