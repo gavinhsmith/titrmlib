@@ -278,7 +278,7 @@ def main():
     ]
     for code in sorted(names):
         md.append(f"| 0x{code:02X} | `TERM_CH_{names[code]}` | {purpose[code]} | "
-                  f"<pre>{chr(10).join(table[code]).replace(' ', '.')}</pre> |")
+                  f"<pre>{'<br>'.join(table[code]).replace(' ', '.')}</pre> |")
     md += [
         "",
         "Box-drawing glyphs and `TERM_CH_BLOCK` are *connected*: the renderer extends them across the",

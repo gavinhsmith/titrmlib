@@ -18,181 +18,31 @@ All 95 printable characters; standard ASCII positions.
 
 | Code | Name | Purpose | Glyph |
 |------|------|---------|-------|
-| 0x80 | `TERM_CH_HLINE` | box: horizontal | <pre>.....
-.....
-.....
-#####
-.....
-.....
-.....</pre> |
-| 0x81 | `TERM_CH_VLINE` | box: vertical | <pre>..#..
-..#..
-..#..
-..#..
-..#..
-..#..
-..#..</pre> |
-| 0x82 | `TERM_CH_TL` | box: top-left corner | <pre>.....
-.....
-.....
-..###
-..#..
-..#..
-..#..</pre> |
-| 0x83 | `TERM_CH_TR` | box: top-right corner | <pre>.....
-.....
-.....
-###..
-..#..
-..#..
-..#..</pre> |
-| 0x84 | `TERM_CH_BL` | box: bottom-left corner | <pre>..#..
-..#..
-..#..
-..###
-.....
-.....
-.....</pre> |
-| 0x85 | `TERM_CH_BR` | box: bottom-right corner | <pre>..#..
-..#..
-..#..
-###..
-.....
-.....
-.....</pre> |
-| 0x86 | `TERM_CH_LTEE` | box: tee, opens right | <pre>..#..
-..#..
-..#..
-..###
-..#..
-..#..
-..#..</pre> |
-| 0x87 | `TERM_CH_RTEE` | box: tee, opens left | <pre>..#..
-..#..
-..#..
-###..
-..#..
-..#..
-..#..</pre> |
-| 0x88 | `TERM_CH_TTEE` | box: tee, opens down | <pre>.....
-.....
-.....
-#####
-..#..
-..#..
-..#..</pre> |
-| 0x89 | `TERM_CH_BTEE` | box: tee, opens up | <pre>..#..
-..#..
-..#..
-#####
-.....
-.....
-.....</pre> |
-| 0x8A | `TERM_CH_CROSS` | box: cross | <pre>..#..
-..#..
-..#..
-#####
-..#..
-..#..
-..#..</pre> |
-| 0x90 | `TERM_CH_CHECK` | status: checkmark | <pre>.....
-....#
-....#
-#..#.
-.#.#.
-..#..
-.....</pre> |
-| 0x91 | `TERM_CH_CROSSMARK` | status: x mark | <pre>.....
-#...#
-.#.#.
-..#..
-.#.#.
-#...#
-.....</pre> |
-| 0x92 | `TERM_CH_DOT` | status: filled dot | <pre>.....
-.###.
-#####
-#####
-#####
-.###.
-.....</pre> |
-| 0x93 | `TERM_CH_DOT_EMPTY` | status: empty dot | <pre>.....
-.###.
-#...#
-#...#
-#...#
-.###.
-.....</pre> |
-| 0x94 | `TERM_CH_ARROW_R` | selection / collapsed | <pre>.....
-#....
-##...
-###..
-##...
-#....
-.....</pre> |
-| 0x95 | `TERM_CH_ARROW_D` | expanded / scroll down | <pre>.....
-.....
-#####
-.###.
-..#..
-.....
-.....</pre> |
-| 0x96 | `TERM_CH_ARROW_U` | scroll up | <pre>.....
-.....
-..#..
-.###.
-#####
-.....
-.....</pre> |
-| 0x98 | `TERM_CH_SIG0` | signal strength 0 | <pre>.....
-.....
-.....
-.....
-.....
-.....
-#.#.#</pre> |
-| 0x99 | `TERM_CH_SIG1` | signal strength 1 | <pre>.....
-.....
-.....
-.....
-#....
-#....
-#.#.#</pre> |
-| 0x9A | `TERM_CH_SIG2` | signal strength 2 | <pre>.....
-.....
-..#..
-..#..
-#.#..
-#.#..
-#.#.#</pre> |
-| 0x9B | `TERM_CH_SIG3` | signal strength 3 (full) | <pre>....#
-....#
-..#.#
-..#.#
-#.#.#
-#.#.#
-#.#.#</pre> |
-| 0x9C | `TERM_CH_SHADE` | progress track / scrollbar | <pre>#.#.#
-.#.#.
-#.#.#
-.#.#.
-#.#.#
-.#.#.
-#.#.#</pre> |
-| 0x9D | `TERM_CH_SMILE` | smiley (from source font's raw code 1) | <pre>.....
-.#.#.
-.#.#.
-.....
-..#..
-#...#
-.###.</pre> |
-| 0x9E | `TERM_CH_BLOCK` | solid block: progress fill / scrollbar thumb | <pre>#####
-#####
-#####
-#####
-#####
-#####
-#####</pre> |
+| 0x80 | `TERM_CH_HLINE` | box: horizontal | <pre>.....<br>.....<br>.....<br>#####<br>.....<br>.....<br>.....</pre> |
+| 0x81 | `TERM_CH_VLINE` | box: vertical | <pre>..#..<br>..#..<br>..#..<br>..#..<br>..#..<br>..#..<br>..#..</pre> |
+| 0x82 | `TERM_CH_TL` | box: top-left corner | <pre>.....<br>.....<br>.....<br>..###<br>..#..<br>..#..<br>..#..</pre> |
+| 0x83 | `TERM_CH_TR` | box: top-right corner | <pre>.....<br>.....<br>.....<br>###..<br>..#..<br>..#..<br>..#..</pre> |
+| 0x84 | `TERM_CH_BL` | box: bottom-left corner | <pre>..#..<br>..#..<br>..#..<br>..###<br>.....<br>.....<br>.....</pre> |
+| 0x85 | `TERM_CH_BR` | box: bottom-right corner | <pre>..#..<br>..#..<br>..#..<br>###..<br>.....<br>.....<br>.....</pre> |
+| 0x86 | `TERM_CH_LTEE` | box: tee, opens right | <pre>..#..<br>..#..<br>..#..<br>..###<br>..#..<br>..#..<br>..#..</pre> |
+| 0x87 | `TERM_CH_RTEE` | box: tee, opens left | <pre>..#..<br>..#..<br>..#..<br>###..<br>..#..<br>..#..<br>..#..</pre> |
+| 0x88 | `TERM_CH_TTEE` | box: tee, opens down | <pre>.....<br>.....<br>.....<br>#####<br>..#..<br>..#..<br>..#..</pre> |
+| 0x89 | `TERM_CH_BTEE` | box: tee, opens up | <pre>..#..<br>..#..<br>..#..<br>#####<br>.....<br>.....<br>.....</pre> |
+| 0x8A | `TERM_CH_CROSS` | box: cross | <pre>..#..<br>..#..<br>..#..<br>#####<br>..#..<br>..#..<br>..#..</pre> |
+| 0x90 | `TERM_CH_CHECK` | status: checkmark | <pre>.....<br>....#<br>....#<br>#..#.<br>.#.#.<br>..#..<br>.....</pre> |
+| 0x91 | `TERM_CH_CROSSMARK` | status: x mark | <pre>.....<br>#...#<br>.#.#.<br>..#..<br>.#.#.<br>#...#<br>.....</pre> |
+| 0x92 | `TERM_CH_DOT` | status: filled dot | <pre>.....<br>.###.<br>#####<br>#####<br>#####<br>.###.<br>.....</pre> |
+| 0x93 | `TERM_CH_DOT_EMPTY` | status: empty dot | <pre>.....<br>.###.<br>#...#<br>#...#<br>#...#<br>.###.<br>.....</pre> |
+| 0x94 | `TERM_CH_ARROW_R` | selection / collapsed | <pre>.....<br>#....<br>##...<br>###..<br>##...<br>#....<br>.....</pre> |
+| 0x95 | `TERM_CH_ARROW_D` | expanded / scroll down | <pre>.....<br>.....<br>#####<br>.###.<br>..#..<br>.....<br>.....</pre> |
+| 0x96 | `TERM_CH_ARROW_U` | scroll up | <pre>.....<br>.....<br>..#..<br>.###.<br>#####<br>.....<br>.....</pre> |
+| 0x98 | `TERM_CH_SIG0` | signal strength 0 | <pre>.....<br>.....<br>.....<br>.....<br>.....<br>.....<br>#.#.#</pre> |
+| 0x99 | `TERM_CH_SIG1` | signal strength 1 | <pre>.....<br>.....<br>.....<br>.....<br>#....<br>#....<br>#.#.#</pre> |
+| 0x9A | `TERM_CH_SIG2` | signal strength 2 | <pre>.....<br>.....<br>..#..<br>..#..<br>#.#..<br>#.#..<br>#.#.#</pre> |
+| 0x9B | `TERM_CH_SIG3` | signal strength 3 (full) | <pre>....#<br>....#<br>..#.#<br>..#.#<br>#.#.#<br>#.#.#<br>#.#.#</pre> |
+| 0x9C | `TERM_CH_SHADE` | progress track / scrollbar | <pre>#.#.#<br>.#.#.<br>#.#.#<br>.#.#.<br>#.#.#<br>.#.#.<br>#.#.#</pre> |
+| 0x9D | `TERM_CH_SMILE` | smiley (from source font's raw code 1) | <pre>.....<br>.#.#.<br>.#.#.<br>.....<br>..#..<br>#...#<br>.###.</pre> |
+| 0x9E | `TERM_CH_BLOCK` | solid block: progress fill / scrollbar thumb | <pre>#####<br>#####<br>#####<br>#####<br>#####<br>#####<br>#####</pre> |
 
 Box-drawing glyphs and `TERM_CH_BLOCK` are *connected*: the renderer extends them across the
 1px column/row gap between cells so lines join. The `.` in the art above is an empty pixel.

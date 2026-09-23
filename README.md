@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/gavinhsmith/titrmlib/actions/workflows/ci.yml/badge.svg)](https://github.com/gavinhsmith/titrmlib/actions/workflows/ci.yml)
 [![API docs](https://img.shields.io/badge/docs-API%20reference-blue)](https://gavinhsmith.github.io/titrmlib/docs/api.html)
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE.md)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/gavinhsmith/titrmlib/blob/main/LICENSE.md)
 [![Platform: TI-84 Plus CE](https://img.shields.io/badge/platform-TI--84%20Plus%20CE-lightgrey)](https://github.com/CE-Programming/toolchain)
 
 A terminal-style UI framework for the TI-84 Plus CE.
@@ -127,11 +127,12 @@ literals are `TERM_S_*`: `TERM_S_CHECK " Connected"`. The full table is in
 - [CONTRIBUTING.md](CONTRIBUTING.md): development setup, building, unit and
   hardware tests, reporting issues
 - [ROADMAP.md](ROADMAP.md): planned features and known issues
+- [DESIGN.md](DESIGN.md): design for the next phase of work
 - [src/FONT.md](src/FONT.md): character codes and glyphs
 - [AGENTS.md](AGENTS.md): design notes for AI coding agents
 
 ## License
 
-titrmlib is licensed under the Apache License 2.0 ([LICENSE.md](LICENSE.md)).
+titrmlib is licensed under the Apache License 2.0 ([LICENSE.md](https://github.com/gavinhsmith/titrmlib/blob/main/LICENSE.md)).
 The font is derived from [petabyt/font](https://github.com/petabyt/font) (MIT,
-[tools/petabyt-font/LICENSE](tools/petabyt-font/LICENSE)).
+[tools/petabyt-font/LICENSE](https://github.com/gavinhsmith/titrmlib/blob/main/tools/petabyt-font/LICENSE)).

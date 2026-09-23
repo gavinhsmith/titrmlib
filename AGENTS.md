@@ -35,10 +35,14 @@ Update this section when a stage finishes or the release state changes.
 
 **Version:** `TITRM_VERSION` is `"0.1.0"`. No tags or releases exist yet.
 
-**Next: stage 2**, not yet scoped. The candidates are under "Planned" in
-[ROADMAP.md](ROADMAP.md): color, a check of the font on a real calculator, and
-Tincan/TINCLIB screens. Color means reworking `draw_cell`'s two-color
-`row_pixels` table.
+The font and icons have been checked on a real TI-84 Plus CE.
+
+**Next: phase 2**, designed but not started. The agreed design and build order
+are in [DESIGN.md](DESIGN.md): retained panels and change-based rendering
+(under 50 ms per typical update), a key queue, scenes, overlays, app-driven
+focus, general events, a revised widget set, and color. Breaking API changes
+are fine until v1.0. Follow DESIGN.md's build order, and update it if a
+decision changes during implementation.
 
 ## Core rules
 
