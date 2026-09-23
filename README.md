@@ -1,15 +1,30 @@
 # titrmlib
-Terminal-Styled UI Framework for the TI-84 Plus CE
 
-titrmlib owns the whole display: it draws a character grid with its own 5x7 font
-(53x30 cells), reads the keypad and runs the event loop. An app builds a tree of
-panels, gives them content, and calls `term_run()`. It never touches `graphx`.
+A terminal-style UI framework for the TI-84 Plus CE.
+
+titrmlib takes over the calculator's screen the way curses does on a desktop
+terminal. It draws a 53×30 character grid with its own 5×7 font, reads the
+keypad, and runs the event loop. You build the UI as a tree of panels, give
+them content, and hand control to `term_run()`. Your program never calls
+graphx itself.
+
+- **Panel tree:** split any panel into fixed, percentage or weighted-fill children, nested as deep as you need
+- **Clipped output:** each panel has its own cursor, and nothing drawn in it can spill outside it
+- **Focus:** `[vars]` moves between focusable panels, and widgets get keys first
+- **Widgets:** text, selectable list, text input, scrollback log, progress bar, plus borders and titles
+- **Glyphs:** box-drawing characters and small status icons (check marks, signal bars, arrows) alongside ASCII
+- **Ticks:** timed events for animation and polling
+
+## Example
 
 ```c
 #include "titrm.h"
 
 static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
-    if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR) term_quit(ctx, 0);
+    (void)state;
+    if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR) {
+        term_quit(ctx, 0);
+    }
 }
 
 int main(void) {
@@ -18,7 +33,7 @@ int main(void) {
     term_panel_t *box = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
     term_panel_set_border(box, true);
     term_panel_set_title(box, "titrmlib");
-    term_make_text(box, "Hello from titrmlib!");
+    term_make_text(box, "Hello from titrmlib! Press [clear] to quit.");
 
     term_run(ctx, on_event, NULL);
     term_shutdown(ctx);
@@ -26,135 +41,89 @@ int main(void) {
 }
 ```
 
-## Layout
+`examples/demo/` is a larger program: a mock Wi-Fi manager that uses every
+feature.
 
-- `src/` - the library (`titrm.h` is the whole public API)
-- `examples/hello/` - the smallest useful program
-- `examples/demo/` - a mock Wi-Fi manager using every feature (panel tree, focus, list, input, log, progress, ticks, show/hide)
-- `tools/gen_font.py` - converts `tools/petabyt-font/font.h` into `src/titrm_font.c`; also writes `src/titrm_chars.h` and `src/FONT.md` (the code -> glyph -> purpose table)
-- `tests/` - host-side unit tests (see [Testing](#testing))
-- `tests/hw/` - hardware tests run in CEmu's autotester (see [Hardware tests](#hardware-tests))
-- `bin/` - build output (`.8xp` files), populated by `make`
+## Requirements
 
-## Building
+- To build: the [CE C/C++ Toolchain](https://github.com/CE-Programming/toolchain) (CEdev).
+- To run: a TI-84 Plus CE with the
+  [CE C libraries](https://github.com/CE-Programming/libraries/releases)
+  installed, and an OS that can run C programs: 5.4 or older, or a newer OS
+  jailbroken with [arTIfiCE](https://yvantt.github.io/arTIfiCE/).
 
-Requires the [CE C/C++ Toolchain](https://github.com/CE-Programming/toolchain) (`CEdev`) on `PATH`.
+## Adding it to your project
 
-```sh
-make        # build every example into bin/<example>/
-make demo   # or just one
-make clean  # remove build artifacts
+titrmlib is compiled into your program from source. Put the repository inside
+your CEdev project, for example as a git submodule at `lib/titrmlib`, and add
+its sources to your makefile:
+
+```make
+CFLAGS = -Wall -Wextra -Oz -Ilib/titrmlib/src
+EXTRA_C_SOURCES = $(wildcard lib/titrmlib/src/*.c)
 ```
 
-The library sources are compiled straight into each example (`project.mk`). The
-project sits at the repo root on purpose: CEdev can't build sources reached
-through `..` on Windows.
-
-## Testing
-
-```sh
-make -C tests            # build and run the unit tests with the host C compiler
-make -C tests CC=clang   # any C99 compiler; SANITIZE= disables ASan/UBSan
-```
-
-The tests don't need CEdev or a calculator. They compile the library natively
-against stand-in CE headers (`tests/stubs/`): drawing lands in an in-memory
-320x240 framebuffer and the keypad replays a scripted list of scan codes, so
-layout, clipping, focus, widgets, key translation and the run loop are all
-exercised through the public API.
-
-### Hardware tests
-
-The unit tests can't catch problems that only show up with the real compiler
-(24-bit `int`), graphx, keypad and clock. For those, `tests/hw/` holds small CE
-programs that run in [CEmu](https://github.com/CE-Programming/CEmu)'s
-`cemu-autotester`. It launches each one, presses keys, and compares CRCs of
-video memory with the expected screens. The tests use nothing else to drive or
-inspect the emulator.
-
-You supply the emulator and a ROM. The ROM isn't included, and CI can't run
-these tests:
-
-- `cemu-autotester` on `PATH` (CEdev ships it in `bin/`) or in `CEMU_AUTOTESTER`
-- `AUTOTESTER_ROM`, a TI-84 Plus CE ROM image with the
-  [CE C libraries](https://github.com/CE-Programming/libraries/releases) (`clibs.8xg`)
-  already installed. Either:
-  - **OS 5.4 or older**, where the autotester starts programs with `Asm(prgmNAME)`, or
-  - **OS 5.5+ jailbroken with [arTIfiCE](https://yvantt.github.io/arTIfiCE/)**,
-    with its `AsmHook2` app installed. `Asm(` is gone on these OS versions, so each
-    test first runs AsmHook2 from the Apps menu (its hook doesn't survive the
-    autotester's boot), then runs the program from the PRGM menu.
-
-  The runner picks the launch method from the ROM: arTIfiCE if AsmHook2 is on
-  it, `Asm(` otherwise. To force one, set `HW_LAUNCH=asm|artifice` or pass
-  `--launch`. The menus are entered by letter (`[alpha][A]` for AsmHook2, then
-  the program's first letter), so other apps and programs on the ROM are fine,
-  unless one starts with the same letter and sorts first.
-
-```sh
-export AUTOTESTER_ROM=/path/to/ti84ce.rom
-make hw-test                          # build and run all of them
-make hw-test HW_ARGS="layout widgets" # or some of them
-make hw-record                        # re-record the expected CRCs of failing screens
-```
-
-| Test | Checks |
-|---|---|
-| `canary` | Only the setup: a graphx program launches and exits. If this one fails, check the ROM and the libraries first |
-| `glyphs` | Every character code, reverse video, box-drawing joins, word wrap |
-| `layout` | Fixed, percent and weighted-fill sizes, 4-deep nesting, clipping, hide/show reflow, destroying a subtree |
-| `widgets` | List, input and log driven by real key presses: wrap-around, `[enter]`, `[vars]` focus, alpha and alpha lock, `[del]`, scrollback |
-| `ticks` | `term_set_tick` with the real `clock()`: 20 ticks of 100 ms arrive at plausible times |
-| `perf` | Frame times for an unchanged screen, a one-row change and a full redraw stay within budget. A miss shows the measured time |
-| `selfcheck` | Assertions that run on the calculator and read pixels back from VRAM: layout math, 24-bit `printf`, clipping, the log ring, focus, pool limits |
-
-Every test ends by pressing `[clear]` and checking that the program returned to a
-cleared home screen.
-
-When a screen doesn't match, the runner saves it as a PNG in
-`tests/hw/build/<test>/`. After an intentional rendering change, run
-`make hw-record`. It rewrites the expected CRCs in each `autotest.json`, but look
-at the PNGs before you commit them. Screens that titrmlib draws (8bpp) have
-exactly one correct CRC, so recording replaces it. Home screen CRCs depend on
-the OS version, so recording adds to that list instead.
-
-### CI
-
-CI (`.github/workflows/ci.yml`) runs on every push and pull request:
-
-- **test** - the unit tests under gcc and clang with AddressSanitizer and UBSan
-- **font** - reruns `tools/gen_font.py` and fails if the generated files in `src/` differ from what's committed
-- **build** - builds every example and hardware test program with CEdev (after the tests pass). The hardware tests themselves need a ROM, so they don't run in CI
+Keep it inside the project directory. On Windows, CEdev can't build sources
+reached through `..`.
 
 ## Using it
 
-**Panels form a tree.** `term_split(parent, dir, size)` adds a child; `dir` is
-`TERM_HORIZONTAL` (side by side) or `TERM_VERTICAL` (stacked). Sizes are
-`TERM_FIXED(cells)`, `TERM_PERCENT(pct)` or `TERM_FILL` / `TERM_FILL_WEIGHT(w)`.
-Fixed and percent sizes are taken first and fill panels share the rest. Layout
-is recomputed whenever the tree changes (split, destroy, show/hide, border).
+The whole API is in [`src/titrm.h`](src/titrm.h).
 
-**Everything is clipped to its panel.** `term_panel_print()` and friends can't
-draw outside the panel's content area, at any depth. Panels are redrawn from
-scratch each frame, so put custom output in a draw callback
-(`term_panel_set_draw`).
+**Panels.** `term_split(parent, dir, size)` adds a child to a panel. `dir` is
+`TERM_HORIZONTAL` (side by side) or `TERM_VERTICAL` (stacked), and every child
+of a panel uses the same one. Sizes are `TERM_FIXED(cells)`,
+`TERM_PERCENT(pct)`, `TERM_FILL` or `TERM_FILL_WEIGHT(w)`. Fixed and percent
+sizes are taken first, then fill panels share what's left. Panels can be
+hidden (`term_panel_show`) or removed (`term_panel_destroy`), and their
+siblings reflow.
 
-**Widgets** turn a panel into something with built-in content and key handling:
-`term_make_text`, `_list`, `_input`, `_log` (scrollback), `_progress`. Any panel
-can also have a border and a title.
+**Drawing.** Panels are redrawn from scratch every frame. To draw your own
+content, set a draw callback with `term_panel_set_draw`, then use
+`term_panel_print`, `_printf`, `_putc`, `_move` and `_set_attr` inside it.
+Output is clipped to the panel's content area.
 
-**Input.** Widgets get keys first. `[vars]` moves focus to the next focusable
-panel in tree order. Keys nobody consumes reach your update function as
-`TERM_EV_KEY`; widgets report `TERM_EV_SELECT` / `TERM_EV_SUBMIT`. `[alpha]` and
-`[2nd][alpha]` (lock) type upper-case letters; `term_alpha_mode()` lets you show
-the state. `term_set_tick(ctx, ms)` delivers `TERM_EV_TICK` for animation.
+**Widgets** turn a panel into one with built-in content and key handling:
+`term_make_text`, `term_make_list`, `term_make_input`, `term_make_log` and
+`term_make_progress`. Any panel can also have a border and a title.
 
-**Glyphs.** Codes 0x80-0xFF hold box-drawing characters and small icons
-(`TERM_CH_TL`, `TERM_CH_CHECK`, `TERM_CH_SIG3`, ...). `TERM_S_*` are the same as
-string literals: `TERM_S_CHECK "Done"`. See `src/FONT.md`.
+**Events.** Your update function receives:
+
+- `TERM_EV_START`, once before the first frame
+- `TERM_EV_KEY`, for keys the focused widget didn't use
+- `TERM_EV_SELECT`, when a list item is chosen with `[enter]`
+- `TERM_EV_SUBMIT`, when an input is submitted with `[enter]`
+- `TERM_EV_TICK`, every interval set with `term_set_tick(ctx, ms)`
+
+`[vars]` moves focus to the next focusable panel. `[alpha]` types one
+upper-case letter and `[2nd][alpha]` locks alpha; `term_alpha_mode()` reports
+the current state. `term_quit(ctx, result)` ends `term_run()`, which returns
+`result`.
+
+**Special characters.** Codes 0x80–0xFF hold box-drawing characters and
+icons, named `TERM_CH_*` (e.g. `TERM_CH_CHECK`). The same characters as string
+literals are `TERM_S_*`: `TERM_S_CHECK " Connected"`. The full table is in
+[`src/FONT.md`](src/FONT.md).
 
 ## Limits
 
-- One fixed font, no color (light on dark; `TERM_ATTR_REVERSE` inverts a cell).
-- `TERM_MAX_PANELS` (32) panels; single-line input up to `TERM_INPUT_MAX` (48) characters.
-- `TERM_LINE_GAP` (1) trades legibility for rows: 0 gives 34 rows, but capitals and digits then touch the line above.
+- One built-in font. Two colors: light on dark, with `TERM_ATTR_REVERSE` to
+  invert a cell.
+- Up to `TERM_MAX_PANELS` (32) panels, and `TERM_INPUT_MAX` (48) characters in
+  an input field.
+- `TERM_LINE_GAP` 0 gives 34 rows instead of 30, but capitals and digits then
+  touch the line above.
+
+## Documentation
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): development setup, building, unit and
+  hardware tests, reporting issues
+- [ROADMAP.md](ROADMAP.md): planned features and known issues
+- [src/FONT.md](src/FONT.md): character codes and glyphs
+- [AGENTS.md](AGENTS.md): design notes for AI coding agents
+
+## License
+
+titrmlib is licensed under the Apache License 2.0 ([LICENSE.md](LICENSE.md)).
+The font is derived from [petabyt/font](https://github.com/petabyt/font) (MIT,
+[tools/petabyt-font/LICENSE](tools/petabyt-font/LICENSE)).
