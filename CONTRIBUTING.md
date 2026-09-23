@@ -176,7 +176,8 @@ before committing**, because a recording accepts whatever was on screen.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every push and pull request:
+`.github/workflows/ci.yml` runs on every branch push and pull request, and
+before every release:
 
 - **test**: the unit tests under gcc and clang with ASan and UBSan
 - **font**: reruns `tools/gen_font.py` and `make docs` and fails if `src/` or `docs/` change
@@ -184,6 +185,20 @@ before committing**, because a recording accepts whatever was on screen.
 
 The hardware tests themselves don't run in CI because they need a ROM. Run
 them locally when you change rendering, input or timing.
+
+## Releasing
+
+Push a version tag to the commit being released:
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+`.github/workflows/release.yml` runs CI, then creates a **draft** release named
+after the tag. It attaches `titrmlib-<tag>.zip`, which holds `src/*.c`,
+`src/*.h` and the licenses, and a short "how to use" description. Add the
+changes to the description on GitHub, then publish the draft.
 
 ## Reporting issues
 
