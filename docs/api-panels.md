@@ -27,7 +27,7 @@ Splitting the screen into panels and sizing them.
 #define TERM_FIXED(cells) ((term_size_t){TERM_SIZE_FIXED, (cells)})
 ```
 
-Defined in src/titrm.h:195
+Defined in src/titrm.h:237
 
 Exactly `cells` cells.
 
@@ -39,7 +39,7 @@ Exactly `cells` cells.
 #define TERM_PERCENT(pct) ((term_size_t){TERM_SIZE_PERCENT, (pct)})
 ```
 
-Defined in src/titrm.h:197
+Defined in src/titrm.h:239
 
 `pct` percent of the parent.
 
@@ -51,7 +51,7 @@ Defined in src/titrm.h:197
 #define TERM_FILL ((term_size_t){TERM_SIZE_FILL, 1})
 ```
 
-Defined in src/titrm.h:199
+Defined in src/titrm.h:241
 
 An equal share of the space left after fixed and percent siblings.
 
@@ -63,7 +63,7 @@ An equal share of the space left after fixed and percent siblings.
 #define TERM_FILL_WEIGHT(w) ((term_size_t){TERM_SIZE_FILL, (w)})
 ```
 
-Defined in src/titrm.h:201
+Defined in src/titrm.h:243
 
 A share of the space left, weighted by `w` against other fill siblings.
 
@@ -82,7 +82,7 @@ A share of the space left, weighted by `w` against other fill siblings.
 enum term_dir_t
 ```
 
-Defined in src/titrm.h:180
+Defined in src/titrm.h:222
 
 How a panel lays out its children.
 
@@ -99,7 +99,7 @@ How a panel lays out its children.
 enum term_size_kind
 ```
 
-Defined in src/titrm.h:192
+Defined in src/titrm.h:234
 
 Values of [term_size_t.kind](#kind).
 
@@ -112,9 +112,9 @@ Values of [term_size_t.kind](#kind).
 
 | Return | Name | Description |
 |--------|------|-------------|
-| [`term_panel_t`](api-types.md#term_panel_t) * | [`term_root`](#term_root)  | The root panel covers the whole grid. |
+| [`term_panel_t`](api-types.md#term_panel_t) * | [`term_root`](#term_root)  | The first scene's root panel, created by [term_init()](api-lifecycle.md#term_init). It covers the whole grid. |
 | [`term_panel_t`](api-types.md#term_panel_t) * | [`term_split`](#term_split)  | Adds a child to `parent` and returns it. |
-| `void` | [`term_panel_destroy`](#term_panel_destroy)  | Removes a panel and everything below it. Panel handles become invalid. |
+| `void` | [`term_panel_destroy`](#term_panel_destroy)  | Removes a panel and everything below it. Panel handles become invalid. A scene that isn't active can be removed this way; the active scene and [term_root()](#term_root) can't. |
 | `void` | [`term_panel_show`](#term_panel_show)  | Shows or hides a panel. Hidden panels take no space; siblings reflow. Takes effect next frame. |
 | `bool` | [`term_panel_visible`](#term_panel_visible)  | Whether the panel is shown (see [term_panel_show()](#term_panel_show)). |
 | `void` | [`term_panel_set_border`](#term_panel_set_border)  | Draws a box around the panel; its content area shrinks by one cell. |
@@ -130,9 +130,9 @@ Values of [term_size_t.kind](#kind).
 term_panel_t * term_root(term_ctx_t * ctx)
 ```
 
-Defined in src/titrm.h:204
+Defined in src/titrm.h:246
 
-The root panel covers the whole grid.
+The first scene's root panel, created by [term_init()](api-lifecycle.md#term_init). It covers the whole grid.
 
 ---
 
@@ -142,7 +142,7 @@ The root panel covers the whole grid.
 term_panel_t * term_split(term_panel_t * parent, term_dir_t dir, term_size_t size)
 ```
 
-Defined in src/titrm.h:216
+Defined in src/titrm.h:258
 
 Adds a child to `parent` and returns it.
 
@@ -156,9 +156,9 @@ The first split makes `parent` a container that lays its children out along `dir
 void term_panel_destroy(term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:219
+Defined in src/titrm.h:261
 
-Removes a panel and everything below it. Panel handles become invalid.
+Removes a panel and everything below it. Panel handles become invalid. A scene that isn't active can be removed this way; the active scene and [term_root()](#term_root) can't.
 
 ---
 
@@ -168,7 +168,7 @@ Removes a panel and everything below it. Panel handles become invalid.
 void term_panel_show(term_panel_t * panel, bool visible)
 ```
 
-Defined in src/titrm.h:222
+Defined in src/titrm.h:264
 
 Shows or hides a panel. Hidden panels take no space; siblings reflow. Takes effect next frame.
 
@@ -180,7 +180,7 @@ Shows or hides a panel. Hidden panels take no space; siblings reflow. Takes effe
 bool term_panel_visible(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:225
+Defined in src/titrm.h:267
 
 Whether the panel is shown (see [term_panel_show()](#term_panel_show)).
 
@@ -192,7 +192,7 @@ Whether the panel is shown (see [term_panel_show()](#term_panel_show)).
 void term_panel_set_border(term_panel_t * panel, bool border)
 ```
 
-Defined in src/titrm.h:228
+Defined in src/titrm.h:270
 
 Draws a box around the panel; its content area shrinks by one cell.
 
@@ -204,7 +204,7 @@ Draws a box around the panel; its content area shrinks by one cell.
 void term_panel_set_title(term_panel_t * panel, const char * title)
 ```
 
-Defined in src/titrm.h:231
+Defined in src/titrm.h:273
 
 Sets a title into the top edge of the border. May be NULL; must outlive the panel.
 
@@ -216,7 +216,7 @@ Sets a title into the top edge of the border. May be NULL; must outlive the pane
 int term_panel_width(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:234
+Defined in src/titrm.h:276
 
 Content width in cells (inside the border).
 
@@ -228,7 +228,7 @@ Content width in cells (inside the border).
 int term_panel_height(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:237
+Defined in src/titrm.h:279
 
 Content height in cells (inside the border).
 
@@ -247,7 +247,7 @@ Content height in cells (inside the border).
 struct term_size_t
 ```
 
-Defined in src/titrm.h:186
+Defined in src/titrm.h:228
 
 A panel's size within its parent. Build one with TERM_FIXED, TERM_PERCENT, TERM_FILL or TERM_FILL_WEIGHT.
 
@@ -266,7 +266,7 @@ A panel's size within its parent. Build one with TERM_FIXED, TERM_PERCENT, TERM_
 uint8_t kind
 ```
 
-Defined in src/titrm.h:187
+Defined in src/titrm.h:229
 
 TERM_SIZE_FIXED, TERM_SIZE_PERCENT or TERM_SIZE_FILL
 
@@ -278,7 +278,7 @@ TERM_SIZE_FIXED, TERM_SIZE_PERCENT or TERM_SIZE_FILL
 uint8_t value
 ```
 
-Defined in src/titrm.h:188
+Defined in src/titrm.h:230
 
 cells, percent or fill weight
 

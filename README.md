@@ -16,6 +16,7 @@ them content, and hand control to `term_run()`. Your program never calls
 graphx itself.
 
 - **Panel tree:** split any panel into fixed, percentage or weighted-fill children, nested as deep as you need
+- **Scenes:** several full-screen panel trees, one shown at a time, each with its own event handler
 - **Clipped output:** each panel has its own cursor, and nothing drawn in it can spill outside it
 - **Focus:** your app decides which panel has focus; the focused widget gets keys first
 - **Widgets:** text, selectable list, text input, scrollback log, progress bar, plus borders and titles
@@ -27,11 +28,14 @@ graphx itself.
 ```c
 #include "titrm.h"
 
-static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+/* The event handler: return true for events it handled. */
+static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     (void)state;
     if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR) {
         term_quit(ctx, 0);
+        return true;
     }
+    return false;
 }
 
 int main(void) {
@@ -96,7 +100,14 @@ without children hold content.
 `term_make_text`, `term_make_list`, `term_make_input`, `term_make_log` and
 `term_make_progress`. Any panel can also have a border and a title.
 
-**Events.** Your update function receives:
+**Scenes.** `term_root(ctx)` is the first scene. `term_scene_new(ctx,
+handler, state)` creates another full-screen scene, and `term_scene_switch`
+shows it. Only the active scene is drawn and gets events; the others keep
+their content until you switch back. A scene's handler hears
+`TERM_EV_SCENE_ENTER` and `TERM_EV_SCENE_LEAVE` when it's switched to or away
+from.
+
+**Events.** Handlers receive:
 
 - `TERM_EV_START`, once before the first frame
 - `TERM_EV_KEY`, for keys the focused widget didn't use
@@ -105,10 +116,14 @@ without children hold content.
 - `TERM_EV_FOCUS_LOST`, when the focused panel is hidden or destroyed
 - `TERM_EV_TICK`, every interval set with `term_set_tick(ctx, ms)`
 
+An event goes to the active scene's handler first, then to the global handler
+passed to `term_run()`. A handler returns `true` when it has handled the event,
+which stops it there.
+
 **Focus.** Your app moves focus with `term_focus(ctx, panel)`; nothing is
 focused until it does, and titrmlib never moves it on its own. `[vars]` is an
 ordinary key (`TERM_KEY_VARS`), so you can use it to cycle focus, as the demo
-does. Input, list and log widgets are focusable; other panels opt in with
+does. Switching scenes clears focus if it was on the old scene. Input, list and log widgets are focusable; other panels opt in with
 `term_panel_set_focusable`.
 
 **Keys.** `[alpha]` types one upper-case letter and `[2nd][alpha]` locks

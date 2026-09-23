@@ -262,7 +262,11 @@ static void free_subtree(term_panel_t *p) {
 }
 
 void term_panel_destroy(term_panel_t *p) {
-    if (!p || p == p->ctx->root) {
+    if (!p || p == p->ctx->root || p == p->ctx->scene) {
+        return;
+    }
+    if (!p->parent) { /* a scene that isn't active */
+        free_subtree(p);
         return;
     }
 
@@ -428,11 +432,18 @@ static void layout(term_panel_t *p) {
 /* The layout is only recomputed when the tree changes (layout_dirty), and
  * before anything reads sizes or writes content. */
 static void relayout(term_ctx_t *ctx) {
-    ctx->root->x = 0;
-    ctx->root->y = 0;
-    ctx->root->w = TERM_COLS;
-    ctx->root->h = TERM_ROWS;
-    layout(ctx->root);
+    /* Every scene, not only the active one, so output into a scene that
+     * isn't shown still lands in cells of the right size. */
+    for (int i = 0; i < TERM_MAX_PANELS; i++) {
+        term_panel_t *p = &ctx->panels[i];
+        if (p->in_use && !p->parent) {
+            p->x = 0;
+            p->y = 0;
+            p->w = TERM_COLS;
+            p->h = TERM_ROWS;
+            layout(p);
+        }
+    }
     ctx->layout_dirty = 0;
     mark_dirty(ctx);
 }
@@ -547,12 +558,14 @@ static bool can_focus(const term_panel_t *p) {
     if (!p->w || !p->h) {
         return false;
     }
+    const term_panel_t *top = p;
     for (const term_panel_t *a = p; a; a = a->parent) {
         if (!a->visible) {
             return false;
         }
+        top = a;
     }
-    return true;
+    return top == p->ctx->scene; /* on screen only in the active scene */
 }
 
 void term_panel_set_focusable(term_panel_t *p, bool focusable) {
@@ -742,28 +755,76 @@ static bool translate(term_ctx_t *ctx, uint8_t sk, term_event_t *ev) {
 
 /* ---- Run loop ------------------------------------------------------------ */
 
-void term_emit(term_ctx_t *ctx, term_event_type_t type, term_panel_t *panel, int value) {
-    if (!ctx->update) {
+/* The active scene's handler, then the global one, until one returns true. */
+static void dispatch(term_ctx_t *ctx, const term_event_t *ev) {
+    term_panel_t *scene = ctx->scene;
+    if (scene->handler && scene->handler(ctx, ev, scene->handler_state)) {
         return;
     }
+    if (ctx->update) {
+        ctx->update(ctx, ev, ctx->state);
+    }
+}
+
+static term_event_t make_event(term_event_type_t type, term_panel_t *panel, int value) {
     term_event_t ev;
     ev.type = type;
     ev.key = TERM_KEY_NONE;
     ev.ch = 0;
     ev.panel = panel;
     ev.value = value;
-    ctx->update(ctx, &ev, ctx->state);
+    return ev;
 }
 
-/* A key goes to the focused widget first, then to the app. */
+void term_emit(term_ctx_t *ctx, term_event_type_t type, term_panel_t *panel, int value) {
+    if (ctx->running) {
+        term_event_t ev = make_event(type, panel, value);
+        dispatch(ctx, &ev);
+    }
+}
+
+/* Scene events go only to that scene's own handler. */
+static void emit_scene(term_ctx_t *ctx, term_panel_t *scene, term_event_type_t type) {
+    if (ctx->running && scene->handler) {
+        term_event_t ev = make_event(type, scene, 0);
+        scene->handler(ctx, &ev, scene->handler_state);
+    }
+}
+
+/* A key goes to the focused widget first, then along the handler chain. */
 static void dispatch_key(term_ctx_t *ctx, const term_event_t *ev) {
     if (ctx->focus && term_widget_key(ctx->focus, ev)) {
         term_panel_touch(ctx->focus);
         return;
     }
-    if (ctx->update) {
-        ctx->update(ctx, ev, ctx->state);
+    dispatch(ctx, ev);
+}
+
+/* ---- Scenes -------------------------------------------------------------- */
+
+term_panel_t *term_scene_new(term_ctx_t *ctx, term_update_fn handler, void *state) {
+    term_panel_t *p = alloc_panel(ctx);
+    if (p) {
+        p->handler = handler;
+        p->handler_state = state;
+        ctx->layout_dirty = 1;
     }
+    return p;
+}
+
+void term_scene_switch(term_ctx_t *ctx, term_panel_t *scene) {
+    if (!scene || scene->parent || scene == ctx->scene) {
+        return;
+    }
+    term_panel_t *old = ctx->scene;
+    ctx->scene = scene;
+    mark_dirty(ctx);
+    emit_scene(ctx, old, TERM_EV_SCENE_LEAVE);
+    emit_scene(ctx, scene, TERM_EV_SCENE_ENTER);
+}
+
+term_panel_t *term_scene_active(const term_ctx_t *ctx) {
+    return ctx->scene;
 }
 
 /* Lays out (if the tree changed), composes the retained content and pushes
@@ -792,7 +853,7 @@ static void frame(term_ctx_t *ctx) {
     for (int r = 0; r < TERM_ROWS; r++) {
         memcpy(grid_row[r], blank_row, sizeof blank_row);
     }
-    compose(ctx->root);
+    compose(ctx->scene);
     flush(ctx);
 }
 
@@ -811,6 +872,7 @@ term_ctx_t *term_init(void) {
     }
 
     g_ctx.root = alloc_panel(&g_ctx);
+    g_ctx.scene = g_ctx.root;
     g_ctx.layout_dirty = 1;
     init_row_pixels();
 
@@ -852,9 +914,11 @@ int term_run(term_ctx_t *ctx, term_update_fn update, void *state) {
     ctx->state = state;
     ctx->quit = 0;
     ctx->result = 0;
+    ctx->running = 1;
 
     ensure_layout(ctx);
     term_emit(ctx, TERM_EV_START, NULL, 0);
+    emit_scene(ctx, ctx->scene, TERM_EV_SCENE_ENTER);
     mark_dirty(ctx);
     frame(ctx);
 
@@ -883,6 +947,7 @@ int term_run(term_ctx_t *ctx, term_update_fn update, void *state) {
         }
     }
 
+    ctx->running = 0;
     ctx->update = NULL;
     return ctx->result;
 }

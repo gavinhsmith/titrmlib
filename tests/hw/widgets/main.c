@@ -58,7 +58,7 @@ static void focus_next(term_ctx_t *ctx, app_t *app) {
     term_focus(ctx, now == app->list ? app->input : now == app->input ? app->log : app->list);
 }
 
-static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     app_t *app = state;
     switch (ev->type) {
     case TERM_EV_START:
@@ -77,7 +77,7 @@ static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     case TERM_EV_KEY:
         if (ev->key == TERM_KEY_CLEAR) {
             term_quit(ctx, 0);
-            return;
+            return true;
         } else if (ev->key == TERM_KEY_VARS) {
             focus_next(ctx, app);
         } else if (ev->key != TERM_KEY_ALPHA) {
@@ -89,6 +89,7 @@ static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     }
     print_status(ctx, app);
     print_footer(app);
+    return true;
 }
 
 int main(void) {

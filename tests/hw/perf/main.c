@@ -76,7 +76,7 @@ static void report(app_t *app) {
     term_panel_print(app->screen, app->report);
 }
 
-static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     app_t *app = state;
     switch (ev->type) {
     case TERM_EV_START:
@@ -106,6 +106,7 @@ static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     default:
         break;
     }
+    return true;
 }
 
 int main(void) {

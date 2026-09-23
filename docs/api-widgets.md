@@ -34,7 +34,7 @@ term_make_* turns a panel into a widget; the term_<widget>_* calls drive it.
 void term_make_text(term_panel_t * panel, const char * text)
 ```
 
-Defined in src/titrm.h:317
+Defined in src/titrm.h:359
 
 Static text, word-wrapped to the panel. `text` must outlive the panel.
 
@@ -46,7 +46,7 @@ Static text, word-wrapped to the panel. `text` must outlive the panel.
 void term_text_set(term_panel_t * panel, const char * text)
 ```
 
-Defined in src/titrm.h:320
+Defined in src/titrm.h:362
 
 Replaces a text widget's text. `text` must outlive the panel.
 
@@ -58,7 +58,7 @@ Replaces a text widget's text. `text` must outlive the panel.
 void term_make_list(term_panel_t * panel, const char *const * items, int count)
 ```
 
-Defined in src/titrm.h:327
+Defined in src/titrm.h:369
 
 Selectable list. up/down move (TERM_EV_CHANGE), [enter] emits TERM_EV_SUBMIT.
 
@@ -72,7 +72,7 @@ Items are not copied. Embed icons with TERM_S_* (e.g. TERM_S_CHECK "Done").
 void term_list_set_items(term_panel_t * panel, const char *const * items, int count)
 ```
 
-Defined in src/titrm.h:330
+Defined in src/titrm.h:372
 
 Replaces a list's items. Items are not copied.
 
@@ -84,7 +84,7 @@ Replaces a list's items. Items are not copied.
 int term_list_selected(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:333
+Defined in src/titrm.h:375
 
 Index of the selected item, or -1 if the list is empty.
 
@@ -96,7 +96,7 @@ Index of the selected item, or -1 if the list is empty.
 void term_list_select(term_panel_t * panel, int index)
 ```
 
-Defined in src/titrm.h:336
+Defined in src/titrm.h:378
 
 Selects an item; out-of-range indexes are clamped.
 
@@ -108,7 +108,7 @@ Selects an item; out-of-range indexes are clamped.
 void term_make_input(term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:344
+Defined in src/titrm.h:386
 
 Single-line text field.
 
@@ -122,7 +122,7 @@ Typing inserts, [del] backspaces, [clear] empties, left/right move the cursor, [
 const char * term_input_text(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:347
+Defined in src/titrm.h:389
 
 The input's current text.
 
@@ -134,7 +134,7 @@ The input's current text.
 void term_input_set(term_panel_t * panel, const char * text)
 ```
 
-Defined in src/titrm.h:350
+Defined in src/titrm.h:392
 
 Replaces the input's text (up to TERM_INPUT_MAX characters).
 
@@ -146,7 +146,7 @@ Replaces the input's text (up to TERM_INPUT_MAX characters).
 void term_make_log(term_panel_t * panel, int max_lines)
 ```
 
-Defined in src/titrm.h:353
+Defined in src/titrm.h:395
 
 Scrollback holding up to `max_lines`. New lines are appended at the bottom; up/down scroll back.
 
@@ -158,7 +158,7 @@ Scrollback holding up to `max_lines`. New lines are appended at the bottom; up/d
 void term_log_print(term_panel_t * panel, const char * str)
 ```
 
-Defined in src/titrm.h:356
+Defined in src/titrm.h:398
 
 Appends text to a log; each '\n' starts a new line.
 
@@ -170,7 +170,7 @@ Appends text to a log; each '\n' starts a new line.
 void term_log_printf(term_panel_t * panel, const char * fmt, ...)
 ```
 
-Defined in src/titrm.h:359
+Defined in src/titrm.h:401
 
 Appends formatted text to a log.
 
@@ -182,7 +182,7 @@ Appends formatted text to a log.
 void term_log_clear(term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:362
+Defined in src/titrm.h:404
 
 Removes every line from a log.
 
@@ -194,7 +194,7 @@ Removes every line from a log.
 void term_make_progress(term_panel_t * panel, int max)
 ```
 
-Defined in src/titrm.h:365
+Defined in src/titrm.h:407
 
 Horizontal progress bar filling the panel's first row, from 0 to `max`.
 
@@ -206,7 +206,7 @@ Horizontal progress bar filling the panel's first row, from 0 to `max`.
 void term_progress_set(term_panel_t * panel, int value)
 ```
 
-Defined in src/titrm.h:368
+Defined in src/titrm.h:410
 
 Sets the progress value; it is clamped to 0..max.
 

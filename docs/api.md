@@ -9,6 +9,7 @@
 | [`Input`](api-input.md#input) | Keys and the events delivered to the app. |
 | [`Focus`](api-focus.md#focus) | Which panel receives keys. |
 | [`Limits`](api-limits.md#limits) |  |
+| [`Scenes`](api-scenes.md#scenes) | Full-screen panel trees the app switches between. |
 | [`Panel tree`](api-panels.md#paneltree) | Splitting the screen into panels and sizing them. |
 | [`Panel-scoped output`](api-output.md#panel-scopedoutput) | Drawing text into a panel. |
 | [`Version`](api-version.md#version) |  |

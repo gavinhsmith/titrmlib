@@ -20,6 +20,7 @@ HW_NAME_widgets = TTWIDGET
 HW_NAME_ticks = TTTICKS
 HW_NAME_selfcheck = TTSELFCK
 HW_NAME_perf = TTPERF
+HW_NAME_scenes = TTSCENES
 
 ifeq ($(EXAMPLE),demo)
 NAME = TITRMDEM

@@ -28,6 +28,10 @@ struct term_panel {
     term_panel_t *last_child;
     term_panel_t *next; /* next sibling */
 
+    /* Scene roots (panels with no parent) only: the scene's event handler. */
+    term_update_fn handler;
+    void *handler_state;
+
     uint8_t in_use;
     uint8_t visible;
     uint8_t focusable;
@@ -88,11 +92,13 @@ struct term_panel {
 
 struct term_ctx {
     term_panel_t panels[TERM_MAX_PANELS];
-    term_panel_t *root;
+    term_panel_t *root;  /* the first scene, from term_init() */
+    term_panel_t *scene; /* the active scene */
     term_panel_t *focus;
 
-    term_update_fn update;
+    term_update_fn update; /* the global handler */
     void *state;
+    uint8_t running;       /* inside term_run() */
 
     uint8_t layout_dirty;
     uint8_t dirty;   /* something changed: the next frame must compose */
@@ -129,7 +135,8 @@ void term_panel_touch(term_panel_t *p);
  * keypad stub to know when the run is really idle). */
 int term_keys_pending(void);
 
-/* Delivers a widget event to the app's update callback. */
+/* Sends an event along the handler chain: the active scene's handler, then
+ * the global one, stopping at the first that returns true. */
 void term_emit(term_ctx_t *ctx, term_event_type_t type, term_panel_t *panel, int value);
 
 /* Widget hooks (titrm_widgets.c). */

@@ -151,6 +151,7 @@ python tests/hw/run.py --help          # all options
 | `layout` | Fixed, percent and weighted-fill sizes, nesting, clipping, hide/show reflow, destroying a subtree |
 | `widgets` | List, input and log driven by key presses: wrap-around, `[enter]`, focus moved by the app on `[vars]`, alpha and alpha lock, `[del]`, scrollback |
 | `ticks` | `term_set_tick` with the real `clock()`: 20 ticks of 100 ms arrive on time |
+| `scenes` | Switching between two scenes: each keeps its content and list selection, a scene's handler refocuses on entry, and a hidden scene can be printed into |
 | `perf` | Update times when nothing changes, when one row changes and when the whole screen changes stay within budget (the one-row budget is the 50 ms goal); a miss shows the measured time |
 | `selfcheck` | Checks that run on the calculator and read pixels back from the screen: layout, 24-bit `printf`, clipping, the log ring, focus, panel limits |
 

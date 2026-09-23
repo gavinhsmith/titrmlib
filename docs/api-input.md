@@ -15,7 +15,7 @@ Keys and the events delivered to the app.
 | Name | Description |
 |------|-------------|
 | [`term_key_t`](#term_key_t)  | Keys, as delivered in [term_event_t.key](#key). |
-| [`term_event_type_t`](#term_event_type_t)  | Kinds of event passed to the update function. |
+| [`term_event_type_t`](#term_event_type_t)  | Kinds of event passed to the handlers. |
 
 ---
 
@@ -58,9 +58,11 @@ Keys, as delivered in [term_event_t.key](#key).
 enum term_event_type_t
 ```
 
-Defined in src/titrm.h:116
+Defined in src/titrm.h:122
 
-Kinds of event passed to the update function.
+Kinds of event passed to the handlers.
+
+Events go to the focused widget first (keys only), then the active scene's handler, then the global handler given to [term_run()](api-lifecycle.md#term_run), stopping at the first handler that returns true. The scene events go only to that scene's handler.
 
 | Value | Description |
 |-------|-------------|
@@ -69,24 +71,28 @@ Kinds of event passed to the update function.
 | `TERM_EV_TICK` | the interval set with [term_set_tick()](api-lifecycle.md#term_set_tick) elapsed |
 | `TERM_EV_SUBMIT` | the user confirmed with [enter]: an input, or a list item (value = index) |
 | `TERM_EV_CHANGE` | the user changed a widget: list selection moved (value = index) or input text edited |
-| `TERM_EV_FOCUS_LOST` | the focused panel was hidden (panel = it) or destroyed (panel = NULL); focus is now empty |
+| `TERM_EV_FOCUS_LOST` | the focused panel was hidden, destroyed (panel = NULL) or left behind by a scene switch; focus is now empty |
+| `TERM_EV_SCENE_ENTER` | to a scene's handler: the scene became active (panel = the scene) |
+| `TERM_EV_SCENE_LEAVE` | to a scene's handler: another scene became active (panel = this scene) |
 ## Typedefs
 
 | Return | Name | Description |
 |--------|------|-------------|
-| `void(*)` | [`term_update_fn`](#term_update_fn)  | Called for every event the framework does not handle itself. |
+| `bool(*)` | [`term_update_fn`](#term_update_fn)  | An event handler: the global one given to [term_run()](api-lifecycle.md#term_run), or a scene's. |
 
 ---
 
 ### term_update_fn
 
 ```cpp
-using term_update_fn = void(*)
+using term_update_fn = bool(*)
 ```
 
-Defined in src/titrm.h:135
+Defined in src/titrm.h:148
 
-Called for every event the framework does not handle itself.
+An event handler: the global one given to [term_run()](api-lifecycle.md#term_run), or a scene's.
+
+Return true if the event was handled, so it goes no further along the chain; false to let the next handler see it.
 
 ## Functions
 
@@ -102,7 +108,7 @@ Called for every event the framework does not handle itself.
 int term_alpha_mode(const term_ctx_t * ctx)
 ```
 
-Defined in src/titrm.h:142
+Defined in src/titrm.h:155
 
 Alpha state, for status displays: 0 = off, 1 = next key only, 2 = locked.
 
@@ -123,7 +129,7 @@ Alpha state, for status displays: 0 = off, 1 = next key only, 2 = locked.
 struct term_event_t
 ```
 
-Defined in src/titrm.h:126
+Defined in src/titrm.h:134
 
 An event passed to the update function.
 
@@ -147,7 +153,7 @@ term_event_type_t type
 
 Type: [`term_event_type_t`](#term_event_type_t)
 
-Defined in src/titrm.h:127
+Defined in src/titrm.h:135
 
 what happened
 
@@ -161,7 +167,7 @@ term_key_t key
 
 Type: [`term_key_t`](#term_key_t)
 
-Defined in src/titrm.h:128
+Defined in src/titrm.h:136
 
 TERM_EV_KEY
 
@@ -173,7 +179,7 @@ TERM_EV_KEY
 char ch
 ```
 
-Defined in src/titrm.h:129
+Defined in src/titrm.h:137
 
 TERM_EV_KEY with TERM_KEY_CHAR: typed character
 
@@ -187,7 +193,7 @@ term_panel_t * panel
 
 Type: [`term_panel_t`](api-types.md#term_panel_t) *
 
-Defined in src/titrm.h:130
+Defined in src/titrm.h:138
 
 widget events: the source. key events: focused panel
 
@@ -199,7 +205,7 @@ widget events: the source. key events: focused panel
 int value
 ```
 
-Defined in src/titrm.h:131
+Defined in src/titrm.h:139
 
 TERM_EV_SUBMIT and TERM_EV_CHANGE from a list: item index
 

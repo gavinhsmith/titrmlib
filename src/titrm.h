@@ -112,14 +112,22 @@ typedef enum {
     TERM_KEY_CHAR /**< a printable character; see term_event_t.ch */
 } term_key_t;
 
-/** @brief Kinds of event passed to the update function. */
+/**
+ * @brief Kinds of event passed to the handlers.
+ *
+ * Events go to the focused widget first (keys only), then the active scene's
+ * handler, then the global handler given to term_run(), stopping at the first
+ * handler that returns true. The scene events go only to that scene's handler.
+ */
 typedef enum {
-    TERM_EV_START,      /**< once, before the first frame */
-    TERM_EV_KEY,        /**< a key the focused widget did not consume */
-    TERM_EV_TICK,       /**< the interval set with term_set_tick() elapsed */
-    TERM_EV_SUBMIT,     /**< the user confirmed with [enter]: an input, or a list item (value = index) */
-    TERM_EV_CHANGE,     /**< the user changed a widget: list selection moved (value = index) or input text edited */
-    TERM_EV_FOCUS_LOST  /**< the focused panel was hidden (panel = it) or destroyed (panel = NULL); focus is now empty */
+    TERM_EV_START,       /**< once, before the first frame */
+    TERM_EV_KEY,         /**< a key the focused widget did not consume */
+    TERM_EV_TICK,        /**< the interval set with term_set_tick() elapsed */
+    TERM_EV_SUBMIT,      /**< the user confirmed with [enter]: an input, or a list item (value = index) */
+    TERM_EV_CHANGE,      /**< the user changed a widget: list selection moved (value = index) or input text edited */
+    TERM_EV_FOCUS_LOST,  /**< the focused panel was hidden, destroyed (panel = NULL) or left behind by a scene switch; focus is now empty */
+    TERM_EV_SCENE_ENTER, /**< to a scene's handler: the scene became active (panel = the scene) */
+    TERM_EV_SCENE_LEAVE  /**< to a scene's handler: another scene became active (panel = this scene) */
 } term_event_type_t;
 
 /** @brief An event passed to the update function. */
@@ -131,8 +139,13 @@ typedef struct {
     int value;           /**< TERM_EV_SUBMIT and TERM_EV_CHANGE from a list: item index */
 } term_event_t;
 
-/** @brief Called for every event the framework does not handle itself. */
-typedef void (*term_update_fn)(term_ctx_t *ctx, const term_event_t *ev, void *state);
+/**
+ * @brief An event handler: the global one given to term_run(), or a scene's.
+ *
+ * Return true if the event was handled, so it goes no further along the
+ * chain; false to let the next handler see it.
+ */
+typedef bool (*term_update_fn)(term_ctx_t *ctx, const term_event_t *ev, void *state);
 
 /**
  * @brief Alpha state, for status displays: 0 = off, 1 = next key only, 2 = locked.
@@ -158,7 +171,8 @@ void term_shutdown(term_ctx_t *ctx);
 /**
  * @brief Runs the draw + input loop. Blocks until term_quit(); returns its result.
  *
- * The screen is redrawn after every key press and tick.
+ * `update` is the global event handler. The screen is redrawn whenever
+ * something on it changed.
  */
 int term_run(term_ctx_t *ctx, term_update_fn update, void *state);
 
@@ -167,6 +181,34 @@ void term_quit(term_ctx_t *ctx, int result);
 
 /** @brief Deliver TERM_EV_TICK every `ms` milliseconds (0 turns ticks off). */
 void term_set_tick(term_ctx_t *ctx, unsigned ms);
+
+/** @} */
+
+/**
+ * @defgroup scenes Scenes
+ * @brief Full-screen panel trees the app switches between.
+ *
+ * A scene is a root panel covering the whole grid, holding the panels of one
+ * screen. Only the active scene is shown and gets events. Scenes that aren't
+ * active keep their content, so switching back is cheap. All scenes share the
+ * pool of TERM_MAX_PANELS panels.
+ * @{
+ */
+
+/** @brief Creates a scene and returns its root panel, or NULL if the pool is full. `handler` may be NULL. */
+term_panel_t *term_scene_new(term_ctx_t *ctx, term_update_fn handler, void *state);
+
+/**
+ * @brief Makes `scene` the one shown and receiving events.
+ *
+ * Sends TERM_EV_SCENE_LEAVE to the old scene's handler and
+ * TERM_EV_SCENE_ENTER to the new one's. Focus doesn't move: if it was on a
+ * panel of the old scene, it becomes empty and TERM_EV_FOCUS_LOST follows.
+ */
+void term_scene_switch(term_ctx_t *ctx, term_panel_t *scene);
+
+/** @brief The active scene's root panel. */
+term_panel_t *term_scene_active(const term_ctx_t *ctx);
 
 /** @} */
 
@@ -200,7 +242,7 @@ enum term_size_kind { TERM_SIZE_FIXED, TERM_SIZE_PERCENT, TERM_SIZE_FILL };
 /** @brief A share of the space left, weighted by `w` against other fill siblings. */
 #define TERM_FILL_WEIGHT(w)   ((term_size_t){TERM_SIZE_FILL, (w)})
 
-/** @brief The root panel covers the whole grid. */
+/** @brief The first scene's root panel, created by term_init(). It covers the whole grid. */
 term_panel_t *term_root(term_ctx_t *ctx);
 
 /**
@@ -215,7 +257,7 @@ term_panel_t *term_root(term_ctx_t *ctx);
  */
 term_panel_t *term_split(term_panel_t *parent, term_dir_t dir, term_size_t size);
 
-/** @brief Removes a panel and everything below it. Panel handles become invalid. */
+/** @brief Removes a panel and everything below it. Panel handles become invalid. A scene that isn't active can be removed this way; the active scene and term_root() can't. */
 void term_panel_destroy(term_panel_t *panel);
 
 /** @brief Shows or hides a panel. Hidden panels take no space; siblings reflow. Takes effect next frame. */

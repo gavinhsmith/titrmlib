@@ -39,8 +39,8 @@ The font and icons have been checked on a real TI-84 Plus CE.
 
 **Phase 2: in progress on the `phase-2` branch.** The design, build order and
 progress are in [DESIGN.md](DESIGN.md). Done: retained panels and
-change-based rendering, the key queue (keypadc input), app-driven focus and
-the new events. Next: scenes, overlays, the revised widget set, color.
+change-based rendering, the key queue (keypadc input), app-driven focus,
+the new events, and scenes. Next: overlays, the revised widget set, color.
 Breaking API changes are fine until v1.0. Follow DESIGN.md's build order, and
 update it if a decision changes during implementation.
 
@@ -83,7 +83,14 @@ update it if a decision changes during implementation.
 - **Characters:** 0x20–0x7E are ASCII. 0x80–0xFF hold box-drawing
   characters and icons, named `TERM_CH_*` (as characters) and `TERM_S_*`
   (as string literals).
-- **Panels:** a fixed pool of `TERM_MAX_PANELS`. `term_split` sizes are
+- **Scenes:** root panels (no parent) are scenes. `ctx->root` is the first,
+  `ctx->scene` the active one; only it is composed and gets events. Layout
+  covers every scene, so hidden scenes can be printed into. A scene root keeps
+  its handler in `handler`/`handler_state`.
+- **Events:** keys go to the focused widget, then `dispatch()`: the active
+  scene's handler, then the global one, stopping at the first that returns
+  true. Scene enter/leave go only to that scene's handler.
+- **Panels:** a fixed pool of `TERM_MAX_PANELS`, shared by all scenes. `term_split` sizes are
   `TERM_FIXED`, `TERM_PERCENT`, `TERM_FILL` and `TERM_FILL_WEIGHT`. Fixed and
   percent sizes are taken first, then fill panels share the rest by weight,
   with the rounding remainder on the last one. All children of a panel share
@@ -94,7 +101,8 @@ update it if a decision changes during implementation.
   content rect for every character.
 - **Focus** is set only by the app (`term_focus`, focusable panels only).
   titrmlib never moves it, except to clear it when the focused panel is
-  hidden or destroyed, which sends `TERM_EV_FOCUS_LOST`. `[vars]` is an
+  hidden, destroyed or no longer in the active scene, which sends
+  `TERM_EV_FOCUS_LOST`. `[vars]` is an
   ordinary key, `TERM_KEY_VARS`.
 - **Input:** the keypad is read with keypadc (`kb_Scan`, ~1.3 ms), not
   `os_GetCSC` (~19 ms per call). `poll_keys` finds new presses by comparing

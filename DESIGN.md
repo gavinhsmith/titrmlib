@@ -148,7 +148,7 @@ the 50 ms goal once step 1 lands.
 |---|---|
 | 1. Retained panels, change-based rendering, key queue | Done |
 | 2. Focus and event changes | Done |
-| 3. Scenes | Not started |
+| 3. Scenes | Done |
 | 4. Overlays | Not started |
 | 5. Widget set and demo | Not started |
 | 6. Color | Not started |
@@ -184,6 +184,23 @@ told about everything that changes what it shows, which is what step 2 adds.
   destroyed.
 - **Performance:** a typical update (one row changed) measures ~46 ms against
   the 50 ms goal; the `perf` hardware test now fails above 50 ms.
+
+### Decisions made while building step 3
+
+- **Handlers return `bool`.** `term_update_fn` returns true when it handled
+  the event, which stops it going further along the chain. This is how a
+  scene's handler consumes an event before the global handler sees it.
+- **A scene is a root panel.** `term_scene_new()` returns the scene's root
+  panel; `term_root()` is the first scene, created by `term_init()`.
+- **The first scene gets `TERM_EV_SCENE_ENTER`** when `term_run()` starts,
+  after `TERM_EV_START`. Switching before `term_run()` sends nothing.
+- **Switching away from the focused panel's scene clears focus** and sends
+  `TERM_EV_FOCUS_LOST`, the same rule as hiding the focused panel. A panel can
+  only hold focus while it is in the active scene.
+- **Destroying scenes:** `term_panel_destroy()` removes a scene that isn't
+  active; the active scene and `term_root()` can't be destroyed.
+- **The panel pool** (`TERM_MAX_PANELS`, 32) is shared by all scenes. Still
+  open, see below.
 
 ## Still to decide
 

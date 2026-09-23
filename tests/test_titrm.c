@@ -106,7 +106,7 @@ static bool row_blank(int row, int from, int to) {
 static term_event_t events[MAX_EVENTS];
 static int n_events;
 
-static void record(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+static bool record(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     (void)state;
     if (n_events < MAX_EVENTS) {
         events[n_events++] = *ev;
@@ -114,6 +114,7 @@ static void record(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR) {
         term_quit(ctx, 42);
     }
+    return true;
 }
 
 static int run_keys(term_ctx_t *ctx, const uint8_t *keys, int n) {
@@ -727,12 +728,13 @@ static void test_alpha_mode_state(void) {
 }
 
 /* The app moves focus itself, here on [vars]. */
-static void focus_on_vars(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+static bool focus_on_vars(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     term_panel_t **panels = state;
     if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_VARS) {
         term_focus(ctx, term_focused(ctx) == panels[0] ? panels[1] : panels[0]);
     }
     record(ctx, ev, NULL);
+    return true;
 }
 
 static void test_vars_is_an_ordinary_key(void) {
@@ -754,11 +756,12 @@ static void test_vars_is_an_ordinary_key(void) {
     CHECK_EQ(last_event(TERM_EV_KEY)->key, TERM_KEY_VARS);
 }
 
-static void quit_after_ticks(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+static bool quit_after_ticks(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     int *ticks = state;
     if (ev->type == TERM_EV_TICK && ++*ticks == 3) {
         term_quit(ctx, 7);
     }
+    return true;
 }
 
 static void test_tick(void) {
@@ -986,6 +989,159 @@ static void test_progress(void) {
     CHECK_EQ(ch_at(0, 0), TERM_CH_SHADE);
 }
 
+/* ---- Scenes -------------------------------------------------------------- */
+
+/* A scene handler that logs what it sees and consumes the '1' key. */
+typedef struct {
+    term_event_t seen[16];
+    int n;
+} scene_log_t;
+
+static bool scene_handler(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+    (void)ctx;
+    scene_log_t *log = state;
+    if (log->n < 16) {
+        log->seen[log->n++] = *ev;
+    }
+    return ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CHAR && ev->ch == '1';
+}
+
+static void test_scenes_keep_their_content(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *first = term_root(ctx);
+    term_panel_t *a = term_split(first, TERM_VERTICAL, TERM_FIXED(1));
+    term_panel_print(a, "first");
+
+    term_panel_t *second = term_scene_new(ctx, NULL, NULL);
+    CHECK(second != NULL);
+    term_panel_t *b = term_split(second, TERM_VERTICAL, TERM_FIXED(2));
+    term_panel_print(b, "second");
+    CHECK(term_scene_active(ctx) == first);
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 6), "first ");
+
+    term_scene_switch(ctx, second);
+    CHECK(term_scene_active(ctx) == second);
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 6), "second");
+
+    term_panel_print(a, "!"); /* printing into a scene that isn't shown */
+    term_scene_switch(ctx, first);
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 6), "first!");
+
+    term_scene_switch(ctx, b); /* not a scene: ignored */
+    CHECK(term_scene_active(ctx) == first);
+}
+
+static void test_scene_event_chain(void) {
+    term_ctx_t *ctx = setup();
+    static scene_log_t mine, other;
+    memset(&mine, 0, sizeof mine);
+    memset(&other, 0, sizeof other);
+    term_panel_t *scene = term_scene_new(ctx, scene_handler, &mine);
+    term_scene_new(ctx, scene_handler, &other); /* never active */
+    term_scene_switch(ctx, scene);
+
+    static const uint8_t keys[] = {sk_1, sk_2};
+    run_keys(ctx, keys, 2);
+
+    /* The scene hears START, its own ENTER, then both keys, and consumes '1'. */
+    CHECK_EQ(mine.n, 4);
+    CHECK_EQ(mine.seen[0].type, TERM_EV_START);
+    CHECK_EQ(mine.seen[1].type, TERM_EV_SCENE_ENTER);
+    CHECK(mine.seen[1].panel == scene);
+    CHECK_EQ(mine.seen[2].ch, '1');
+    CHECK_EQ(mine.seen[3].ch, '2');
+
+    /* The global handler gets START and only the key the scene let through;
+     * scene events never reach it. */
+    CHECK_EQ(n_events, 2);
+    CHECK_EQ(events[0].type, TERM_EV_START);
+    CHECK_EQ(events[1].ch, '2');
+    CHECK_EQ(count_events(TERM_EV_SCENE_ENTER), 0);
+
+    CHECK_EQ(other.n, 0); /* inactive scenes get nothing */
+}
+
+/* Global handler that switches scenes on [vars]. */
+static bool switch_on_vars(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+    term_panel_t *to = state;
+    if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_VARS) {
+        term_scene_switch(ctx, to);
+    }
+    return record(ctx, ev, NULL);
+}
+
+static void test_scene_enter_and_leave(void) {
+    term_ctx_t *ctx = setup();
+    static scene_log_t first_log, second_log;
+    memset(&first_log, 0, sizeof first_log);
+    memset(&second_log, 0, sizeof second_log);
+    term_panel_t *first = term_scene_new(ctx, scene_handler, &first_log);
+    term_panel_t *second = term_scene_new(ctx, scene_handler, &second_log);
+    term_scene_switch(ctx, first); /* before term_run: no events yet */
+    CHECK_EQ(first_log.n, 0);
+
+    static const uint8_t keys[] = {sk_Vars};
+    n_events = 0;
+    stub_keys(keys, 1);
+    term_run(ctx, switch_on_vars, second);
+
+    CHECK(term_scene_active(ctx) == second);
+    CHECK_EQ(first_log.seen[first_log.n - 1].type, TERM_EV_SCENE_LEAVE);
+    CHECK(first_log.seen[first_log.n - 1].panel == first);
+    CHECK_EQ(second_log.n, 1);
+    CHECK_EQ(second_log.seen[0].type, TERM_EV_SCENE_ENTER);
+    CHECK(second_log.seen[0].panel == second);
+}
+
+static void test_scene_switch_loses_focus(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *input = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(1));
+    term_make_input(input);
+    term_focus(ctx, input);
+    term_panel_t *other = term_scene_new(ctx, NULL, NULL);
+
+    term_scene_switch(ctx, other);
+    run_keys(ctx, NULL, 0);
+    CHECK(term_focused(ctx) == NULL);
+    CHECK_EQ(count_events(TERM_EV_FOCUS_LOST), 1);
+    CHECK(last_event(TERM_EV_FOCUS_LOST)->panel == input);
+
+    /* A panel in a scene that isn't active can't take focus while it's hidden
+     * away; once its scene is back, it can. */
+    term_scene_switch(ctx, term_root(ctx));
+    term_focus(ctx, input);
+    run_keys(ctx, NULL, 0);
+    CHECK(term_focused(ctx) == input);
+}
+
+static void test_scene_destroy(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *scene = term_scene_new(ctx, NULL, NULL);
+    term_split(scene, TERM_VERTICAL, TERM_FILL);
+    int used = 0;
+    for (int i = 0; i < TERM_MAX_PANELS; i++) {
+        used += ctx->panels[i].in_use;
+    }
+    CHECK_EQ(used, 3);
+
+    term_scene_switch(ctx, scene);
+    term_panel_destroy(scene); /* active: ignored */
+    CHECK(scene->in_use);
+    term_panel_destroy(term_root(ctx)); /* the first scene: ignored */
+    CHECK(term_root(ctx)->in_use);
+
+    term_scene_switch(ctx, term_root(ctx));
+    term_panel_destroy(scene);
+    used = 0;
+    for (int i = 0; i < TERM_MAX_PANELS; i++) {
+        used += ctx->panels[i].in_use;
+    }
+    CHECK_EQ(used, 1);
+}
+
 /* ---- Lifecycle ----------------------------------------------------------- */
 
 static void test_init_and_shutdown(void) {
@@ -1044,6 +1200,11 @@ static const struct {
     TEST(test_log_ring_and_scrollback),
     TEST(test_log_splits_lines),
     TEST(test_progress),
+    TEST(test_scenes_keep_their_content),
+    TEST(test_scene_event_chain),
+    TEST(test_scene_enter_and_leave),
+    TEST(test_scene_switch_loses_focus),
+    TEST(test_scene_destroy),
     TEST(test_init_and_shutdown),
 };
 

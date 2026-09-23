@@ -87,10 +87,10 @@ static void print_all(app_t *app) {
     print_sizes(app);
 }
 
-static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     app_t *app = state;
     if (ev->type != TERM_EV_KEY) {
-        return;
+        return true;
     }
     switch (ev->key) {
     case TERM_KEY_F2:
@@ -104,11 +104,12 @@ static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
         break;
     case TERM_KEY_CLEAR:
         term_quit(ctx, 0);
-        return;
+        return true;
     default:
         break;
     }
     print_all(app);
+    return true;
 }
 
 int main(void) {

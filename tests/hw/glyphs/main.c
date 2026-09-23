@@ -55,11 +55,12 @@ static void print_joins(term_panel_t *p) {
                      TERM_S_SHADE TERM_S_SHADE TERM_S_BLOCK TERM_S_BLOCK TERM_S_SHADE TERM_S_SHADE " fill");
 }
 
-static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     (void)state;
     if (ev->type == TERM_EV_KEY && ev->key == TERM_KEY_CLEAR) {
         term_quit(ctx, 0);
     }
+    return true;
 }
 
 int main(void) {

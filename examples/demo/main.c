@@ -160,7 +160,7 @@ static void run_command(term_ctx_t *ctx, demo_t *d, const char *cmd) {
     }
 }
 
-static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
+static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     demo_t *d = state;
 
     switch (ev->type) {
@@ -209,6 +209,7 @@ static void on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
 
     show_title(ctx, d);
     show_details(d);
+    return true;
 }
 
 /* ---- Setup --------------------------------------------------------------- */
