@@ -1,28 +1,39 @@
 {
   "transfer_files": [
-    "bin/hw_perf/TTPERF.8xp"
+    "bin/hw_colors/TTCOLORS.8xp"
   ],
   "target": {
-    "name": "TTPERF",
+    "name": "TTCOLORS",
     "isASM": true
   },
   "sequence": [
     "action|launch",
     "hashWait|1",
+    "key|down",
+    "hashWait|2",
     "key|clear",
-    "hashWait|2"
+    "hashWait|3"
   ],
   "hashes": {
     "1": {
-      "description": "Idle, one-row, full-screen and color updates within their time budgets",
-      "timeout": 60000,
+      "description": "Colored title, swatches of every TERM_COLOR_*, and a colored box with a focused list, checkbox and button",
+      "timeout": 10000,
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "D070E99B"
+        "D29BFD17"
       ]
     },
     "2": {
+      "description": "[down] moved the list selection",
+      "timeout": 10000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "3D1CFFD2"
+      ]
+    },
+    "3": {
       "description": "Program exited to a cleared home screen",
       "timeout": 5000,
       "start": "vram_start",

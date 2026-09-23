@@ -1,12 +1,13 @@
 /*
  * Hardware test: perf. Times updates through the public API: a 1 ms tick
  * gives the app a chance to change the screen on every loop, so the gap
- * between ticks is the app's printing plus one frame. Three cases, 20 ticks
+ * between ticks is the app's printing plus one frame. Four cases, 20 ticks
  * each:
  *
  *   idle  - the app changes nothing (the frame is skipped)
  *   line  - a highlight moves down one row (typical: a list selection moving)
  *   full  - every cell changes (two alternating screens of text)
+ *   color - the same, in colors other than white on black (a slower path)
  *
  * The screen reports each case against its budget, so it is the same every
  * run unless a budget is missed; the measured times are shown only then.
@@ -20,10 +21,10 @@
 
 #define FRAMES 20
 
-enum { CASE_IDLE, CASE_LINE, CASE_FULL, NUM_CASES };
+enum { CASE_IDLE, CASE_LINE, CASE_FULL, CASE_COLOR, NUM_CASES };
 
-static const char *const names[NUM_CASES] = {"idle", "line", "full"};
-static const unsigned budget_ms[NUM_CASES] = {5, 50, 600};
+static const char *const names[NUM_CASES] = {"idle", "line", "full", "color"};
+static const unsigned budget_ms[NUM_CASES] = {5, 50, 600, 600};
 
 typedef struct {
     term_panel_t *screen;
@@ -59,6 +60,9 @@ static void update(app_t *app) {
         print_row(p, r, 'A' + r % 26, true);
     } else if (app->which == CASE_FULL) {
         print_screen(p, app->frame % 2);
+    } else if (app->which == CASE_COLOR) {
+        term_panel_set_colors(p, TERM_COLOR_YELLOW, TERM_COLOR_BLUE);
+        print_screen(p, app->frame % 2);
     }
 }
 
@@ -72,6 +76,7 @@ static void report(app_t *app) {
                            app->ms[i]);
         }
     }
+    term_panel_set_colors(app->screen, TERM_COLOR_WHITE, TERM_COLOR_BLACK);
     term_panel_clear(app->screen);
     term_panel_print(app->screen, app->report);
 }

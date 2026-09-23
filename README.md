@@ -21,6 +21,7 @@ graphx itself.
 - **Clipped output:** each panel has its own cursor, and nothing drawn in it can spill outside it
 - **Focus:** your app decides which panel has focus; the focused widget gets keys first
 - **Widgets:** text (with scrolling and auto-scroll, for logs), list, input, button, checkbox, progress bar, plus borders and titles; build your own with a key handler
+- **Color:** foreground and background per panel, from the 256-color palette; reverse video swaps them
 - **Glyphs:** box-drawing characters and small status icons (check marks, signal bars, arrows) alongside ASCII
 - **Ticks:** timed events for animation and polling
 
@@ -97,6 +98,14 @@ state changes, typically in the update function; only the cells that changed
 are redrawn. Output is clipped to the panel's content area, and only panels
 without children hold content.
 
+**Color.** `term_panel_set_colors(panel, fg, bg)` takes palette indices:
+`TERM_COLOR_*` names common ones in graphx's default palette, and any index
+from 0 to 255 works. Like the attribute, colors apply to what is printed next
+and to `term_panel_clear`; widgets, borders and titles are drawn in them.
+Panels split from a panel start with its colors, so coloring a dialog colors
+everything in it. `TERM_ATTR_REVERSE` swaps a panel's two colors. The default
+is white on black.
+
 **Widgets** turn a panel into one with built-in content and key handling:
 `term_make_text`, `term_make_button`, `term_make_checkbox`, `term_make_list`,
 `term_make_input` and `term_make_progress`. A text widget copies its text and
@@ -105,8 +114,9 @@ end, which makes it a log. A panel that holds other panels is a container:
 give it a border and title with `term_panel_set_border` and
 `term_panel_set_title`.
 
-Widgets draw in the panel's attribute (`term_panel_set_attr`) and show focus
-with its focus attribute (`term_panel_set_focus_attr`); text can be centered
+Widgets draw in the panel's attribute (`term_panel_set_attr`) and colors,
+and show focus with its focus attribute (`term_panel_set_focus_attr`); text
+can be centered
 with `term_panel_set_align`. To build your own widget, make a panel
 focusable, give it a key handler with `term_panel_set_keys`, print its
 content, and report changes with `term_panel_send(panel, TERM_EV_CHANGE,
@@ -158,8 +168,9 @@ literals are `TERM_S_*`: `TERM_S_CHECK " Connected"`. The full table is in
 
 ## Limits
 
-- One built-in font. Two colors: light on dark, with `TERM_ATTR_REVERSE` to
-  invert a cell.
+- One built-in font, and one attribute (`TERM_ATTR_REVERSE`) besides colors.
+- Screens using many color pairs at once draw more slowly: the pixel tables for
+  the six most recent pairs are cached.
 - Up to `TERM_MAX_PANELS` (32) panels, and `TERM_INPUT_MAX` (48) characters in
   an input field.
 - `TERM_LINE_GAP` 0 gives 34 rows instead of 30, but capitals and digits then

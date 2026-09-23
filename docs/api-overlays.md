@@ -22,7 +22,7 @@ Opening an overlay doesn't move focus; it remembers the panel that had it. Closi
 #define TERM_MAX_OVERLAYS 8
 ```
 
-Defined in src/titrm.h:232
+Defined in src/titrm.h:244
 
 Up to this many overlays can be open at once.
 
@@ -42,7 +42,7 @@ Up to this many overlays can be open at once.
 term_panel_t * term_overlay_open(term_ctx_t * ctx, int col, int row, int w, int h)
 ```
 
-Defined in src/titrm.h:235
+Defined in src/titrm.h:247
 
 Opens an overlay at column `col`, row `row`, `w` by `h` cells (clipped to the grid). NULL if the pool or overlay limit is full.
 
@@ -54,7 +54,7 @@ Opens an overlay at column `col`, row `row`, `w` by `h` cells (clipped to the gr
 term_panel_t * term_overlay_open_centered(term_ctx_t * ctx, int w, int h)
 ```
 
-Defined in src/titrm.h:238
+Defined in src/titrm.h:250
 
 Opens an overlay of `w` by `h` cells, centered on the grid.
 
@@ -66,7 +66,7 @@ Opens an overlay of `w` by `h` cells, centered on the grid.
 void term_overlay_close(term_panel_t * overlay)
 ```
 
-Defined in src/titrm.h:241
+Defined in src/titrm.h:253
 
 Closes an overlay, removing it and its panels, and gives focus back as described above.
 

@@ -64,6 +64,7 @@ struct term_panel {
     uint8_t cur_x, cur_y;
     uint8_t attr;
     uint8_t focus_attr;
+    uint8_t fg, bg; /* palette indices */
     uint8_t align;  /* term_align_t, for text */
     uint8_t submit; /* [enter] while focused sends TERM_EV_SUBMIT */
 

@@ -3,8 +3,9 @@
 ## Planned
 
 - **Phase 2:** retained panels and change-based rendering, a key queue,
-  scenes, overlays, a revised widget set and color. The agreed design is in
-  [DESIGN.md](DESIGN.md).
+  scenes, overlays, a revised widget set and color. Built on the `phase-2`
+  branch, to be reviewed and merged. The design is in [DESIGN.md](DESIGN.md).
+- Re-record `demo.gif` with the phase 2 demo.
 
 ## Known issues
 

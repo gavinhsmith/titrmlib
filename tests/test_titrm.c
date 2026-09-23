@@ -1056,6 +1056,56 @@ static void test_custom_widget(void) {
     CHECK_EQ(count_events(TERM_EV_SUBMIT), 1); /* [enter], from set_submit */
 }
 
+static void test_colors(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *box = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(6));
+    term_panel_set_colors(box, TERM_COLOR_YELLOW, TERM_COLOR_BLUE);
+    term_panel_set_border(box, true);
+    term_panel_set_title(box, "Box");
+    term_panel_t *a = term_split(box, TERM_VERTICAL, TERM_FIXED(1)); /* inherits */
+    term_panel_t *b = term_split(box, TERM_VERTICAL, TERM_FIXED(1));
+    term_panel_set_colors(b, TERM_COLOR_RED, TERM_COLOR_WHITE);
+    term_panel_print(a, "A");
+    term_panel_set_attr(a, TERM_ATTR_REVERSE);
+    term_panel_print(a, "B");
+    term_panel_print(b, "C");
+    draw(ctx);
+
+    term_cell_t c = grid[1][1]; /* "A" */
+    CHECK_EQ(c.ch, 'A');
+    CHECK_EQ(c.fg, TERM_COLOR_YELLOW);
+    CHECK_EQ(c.bg, TERM_COLOR_BLUE);
+    CHECK_EQ(grid[1][2].fg, TERM_COLOR_BLUE); /* reversed: swapped */
+    CHECK_EQ(grid[1][2].bg, TERM_COLOR_YELLOW);
+    CHECK_EQ(grid[1][3].bg, TERM_COLOR_BLUE); /* a blank cell of "a" */
+    CHECK_EQ(grid[2][1].fg, TERM_COLOR_RED);  /* "C" */
+    CHECK_EQ(grid[2][1].bg, TERM_COLOR_WHITE);
+    CHECK_EQ(grid[0][0].fg, TERM_COLOR_YELLOW); /* border */
+    CHECK_EQ(grid[0][0].bg, TERM_COLOR_BLUE);
+    CHECK_EQ(grid[0][2].bg, TERM_COLOR_BLUE); /* title, not focused: normal */
+    CHECK_EQ(grid[4][5].bg, TERM_COLOR_BLUE);   /* the box's own area, under its children */
+    CHECK_EQ(grid[6][0].bg, TERM_COLOR_BLACK);  /* outside it */
+
+    /* Pixels: foreground where the glyph is set, background elsewhere. */
+    for (int r = 0; r < TERM_CELL_H; r++) {
+        for (int x = 0; x < TERM_CELL_W; x++) {
+            bool on = r < TERM_GLYPH_H && x < TERM_GLYPH_W &&
+                      (term_font['A'].rows[r] >> (TERM_GLYPH_W - 1 - x)) & 1;
+            CHECK_EQ(stub_fb[ORIGIN_Y + TERM_CELL_H + r][ORIGIN_X + TERM_CELL_W + x],
+                     on ? TERM_COLOR_YELLOW : TERM_COLOR_BLUE);
+        }
+    }
+
+    /* Clearing fills with the background; widgets draw in the colors. */
+    term_panel_set_colors(a, TERM_COLOR_WHITE, TERM_COLOR_GREEN);
+    term_panel_clear(a);
+    term_make_button(b, "OK");
+    draw(ctx);
+    CHECK_EQ(grid[1][1].bg, TERM_COLOR_GREEN);
+    CHECK_EQ(grid[2][1].bg, TERM_COLOR_RED); /* a button is reversed */
+    CHECK_EQ(grid[2][1].fg, TERM_COLOR_WHITE);
+}
+
 static void test_focus_attr(void) {
     term_ctx_t *ctx = setup();
     term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(5));
@@ -1461,6 +1511,7 @@ static const struct {
     TEST(test_checkbox),
     TEST(test_custom_widget),
     TEST(test_focus_attr),
+    TEST(test_colors),
     TEST(test_progress),
     TEST(test_scenes_keep_their_content),
     TEST(test_scene_event_chain),

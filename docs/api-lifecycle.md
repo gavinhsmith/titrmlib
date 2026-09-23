@@ -22,7 +22,7 @@ Starting, running and stopping the framework.
 term_ctx_t * term_init(void)
 ```
 
-Defined in src/titrm.h:166
+Defined in src/titrm.h:178
 
 Takes over the screen. Only one context exists; calling twice returns it.
 
@@ -34,7 +34,7 @@ Takes over the screen. Only one context exists; calling twice returns it.
 void term_shutdown(term_ctx_t * ctx)
 ```
 
-Defined in src/titrm.h:169
+Defined in src/titrm.h:181
 
 Gives the screen back to the OS.
 
@@ -46,7 +46,7 @@ Gives the screen back to the OS.
 int term_run(term_ctx_t * ctx, term_update_fn update, void * state)
 ```
 
-Defined in src/titrm.h:177
+Defined in src/titrm.h:189
 
 Runs the draw + input loop. Blocks until [term_quit()](#term_quit); returns its result.
 
@@ -60,7 +60,7 @@ Runs the draw + input loop. Blocks until [term_quit()](#term_quit); returns its 
 void term_quit(term_ctx_t * ctx, int result)
 ```
 
-Defined in src/titrm.h:180
+Defined in src/titrm.h:192
 
 Ends [term_run()](#term_run) after the current event; it returns `result`.
 
@@ -72,7 +72,7 @@ Ends [term_run()](#term_run) after the current event; it returns `result`.
 void term_set_tick(term_ctx_t * ctx, unsigned ms)
 ```
 
-Defined in src/titrm.h:183
+Defined in src/titrm.h:195
 
 Deliver TERM_EV_TICK every `ms` milliseconds (0 turns ticks off).
 

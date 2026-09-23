@@ -74,8 +74,6 @@ static void show_title(term_ctx_t *ctx, demo_t *d) {
     term_panel_t *p = d->title;
 
     term_panel_clear(p);
-    term_panel_set_attr(p, TERM_ATTR_REVERSE);
-    term_panel_repeat(p, ' ', term_panel_width(p));
 
     term_panel_move(p, 1, 0);
     term_panel_print(p, "titrmlib demo");
@@ -120,6 +118,7 @@ static void open_password_dialog(term_ctx_t *ctx, demo_t *d, int index) {
     snprintf(d->dialog_title, sizeof d->dialog_title, "Password: %s", networks[index].ssid);
 
     d->dialog = term_overlay_open_centered(ctx, 32, 6);
+    term_panel_set_colors(d->dialog, TERM_COLOR_WHITE, TERM_COLOR_BLUE); /* its panels inherit */
     term_panel_set_border(d->dialog, true);
     term_panel_set_title(d->dialog, d->dialog_title);
     d->password = term_split(d->dialog, TERM_VERTICAL, TERM_FIXED(1));
@@ -328,6 +327,7 @@ int main(void) {
 
     /* Screen: title bar / body / command line / status bar, stacked. */
     d.title = term_split(d.main, TERM_VERTICAL, TERM_FIXED(1));
+    term_panel_set_colors(d.title, TERM_COLOR_WHITE, TERM_COLOR_BLUE);
     term_panel_t *body = term_split(d.main, TERM_VERTICAL, TERM_FILL);
     d.input = term_split(d.main, TERM_VERTICAL, TERM_FIXED(3));
     term_panel_t *status = term_split(d.main, TERM_VERTICAL, TERM_FIXED(1));

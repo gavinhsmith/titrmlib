@@ -79,8 +79,20 @@ int term_rows(void);
 /** @brief Cell attribute for term_panel_set_attr(): normal video. */
 #define TERM_ATTR_NORMAL  0
 
-/** @brief Cell attribute for term_panel_set_attr(): inverse video, the only "style" for now. */
+/** @brief Cell attribute for term_panel_set_attr(): the panel's colors swapped. */
 #define TERM_ATTR_REVERSE 1
+
+/* Colors: indices into graphx's default palette, for
+ * term_panel_set_colors(). Any other index (0-255) works too. */
+#define TERM_COLOR_BLACK  0x00 /**< the default background */
+#define TERM_COLOR_WHITE  0xFF /**< the default foreground */
+#define TERM_COLOR_RED    0xE0 /**< red */
+#define TERM_COLOR_ORANGE 0xE1 /**< orange (graphx names 0xE3, which shows as yellow) */
+#define TERM_COLOR_YELLOW 0xE7 /**< yellow */
+#define TERM_COLOR_GREEN  0x03 /**< green */
+#define TERM_COLOR_BLUE   0x10 /**< blue */
+#define TERM_COLOR_PURPLE 0x50 /**< purple */
+#define TERM_COLOR_PINK   0xF0 /**< pink */
 
 /** @} */
 
@@ -362,6 +374,16 @@ void term_panel_move(term_panel_t *panel, int col, int row);
 
 /** @brief Sets the attribute (TERM_ATTR_*) for the text printed next. */
 void term_panel_set_attr(term_panel_t *panel, uint8_t attr);
+
+/**
+ * @brief Sets the panel's colors (TERM_COLOR_*, or any palette index).
+ *
+ * Like the attribute, they apply to what is printed next, and clearing fills
+ * the panel with the background. Widgets, the border and the title are drawn
+ * in them, and a panel with children fills its area with its background.
+ * Panels split from this one start with its colors. White on black by default.
+ */
+void term_panel_set_colors(term_panel_t *panel, uint8_t fg, uint8_t bg);
 
 /** @brief Wrap at the right edge instead of clipping (the default). */
 void term_panel_wrap(term_panel_t *panel, bool wrap);

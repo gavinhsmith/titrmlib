@@ -40,8 +40,9 @@ The font and icons have been checked on a real TI-84 Plus CE.
 **Phase 2: in progress on the `phase-2` branch.** The design, build order and
 progress are in [DESIGN.md](DESIGN.md). Done: retained panels and
 change-based rendering, the key queue (keypadc input), app-driven focus,
-the new events, scenes, overlays, and the revised widget set with the demo
-rebuilt on it. Next: color, the last step.
+the new events, scenes, overlays, the revised widget set with the demo
+rebuilt on it, and color. Phase 2 is complete on the branch and not yet
+merged; `demo.gif` still shows the stage 1 demo.
 Breaking API changes are fine until v1.0. Follow DESIGN.md's build order, and
 update it if a decision changes during implementation.
 
@@ -77,9 +78,15 @@ update it if a decision changes during implementation.
   panel's cells (and borders) into `grid`, then `flush` compares `grid` with
   `shown` and draws only changed cells. Composing is cheap; nothing is
   reprinted per frame.
+- **Colors:** each panel has `fg`/`bg` palette indices, copied into cells as
+  they are written (`make_cell`; `TERM_ATTR_REVERSE` swaps them). Children
+  start with their parent's colors, and a container whose background differs
+  from its parent's fills its area when composed.
 - **Glyph drawing:** `draw_cell` writes into `gfx_vbuffer` directly, copying
-  each cell row from `row_pixels`, a 64-entry table of 6-pixel patterns in
-  the two fixed colors. Box-drawing characters and `TERM_CH_BLOCK` stretch
+  each cell row from `row_pixels`, a table of 6-pixel patterns for each of 64
+  masks. There is one table per color pair, for white on black and the five
+  most recent other pairs, built from the white-on-black one with
+  `(pixel & (fg ^ bg)) ^ bg`. Box-drawing characters and `TERM_CH_BLOCK` stretch
   into the gaps between cells so lines join up.
 - **Characters:** 0x20–0x7E are ASCII. 0x80–0xFF hold box-drawing
   characters and icons, named `TERM_CH_*` (as characters) and `TERM_S_*`
@@ -143,6 +150,7 @@ hardware test against fixed budgets:
 | Nothing changed | ~1 ms | 5 ms |
 | One row changed | ~46 ms | 50 ms (the phase 2 goal) |
 | Every cell changed | ~483 ms | 600 ms |
+| Every cell changed, in color | ~440 ms | 600 ms |
 
 Most of a full-screen update is drawing 1,590 cells at ~0.2 ms each, plus a
 keypad scan per row. The `widgets` hardware test runs at the autotester's

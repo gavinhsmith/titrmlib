@@ -23,6 +23,7 @@ HW_NAME_perf = TTPERF
 HW_NAME_scenes = TTSCENES
 HW_NAME_overlays = TTOVERLY
 HW_NAME_controls = TTCONTRL
+HW_NAME_colors = TTCOLORS
 
 ifeq ($(EXAMPLE),demo)
 NAME = TITRMDEM

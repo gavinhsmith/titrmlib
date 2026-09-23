@@ -10,10 +10,9 @@
 #include <ti/getcsc.h>
 #include <ti/screen.h>
 
-/* Color is a non-goal for now: light text on a dark background, using the
- * default graphx palette, with TERM_ATTR_REVERSE swapping the two. */
-#define TERM_FG 0xFF
-#define TERM_BG 0x00
+/* Default colors: white on black. */
+#define TERM_FG TERM_COLOR_WHITE
+#define TERM_BG TERM_COLOR_BLACK
 
 /* The grid doesn't fill the screen exactly; centre it. */
 #define ORIGIN_X ((TERM_SCREEN_W - TERM_COLS * TERM_CELL_W) / 2)
@@ -32,13 +31,18 @@ static bool g_open;
 int term_cols(void) { return TERM_COLS; }
 int term_rows(void) { return TERM_ROWS; }
 
-static term_cell_t make_cell(uint8_t ch, uint8_t attr) {
-    term_cell_t c = {ch, TERM_FG, TERM_BG};
+/* A cell in the panel's colors; TERM_ATTR_REVERSE swaps them. */
+static term_cell_t make_cell(const term_panel_t *p, uint8_t ch, uint8_t attr) {
+    term_cell_t c = {ch, p->fg, p->bg};
     if (attr & TERM_ATTR_REVERSE) {
-        c.fg = TERM_BG;
-        c.bg = TERM_FG;
+        c.fg = p->bg;
+        c.bg = p->fg;
     }
     return c;
+}
+
+static term_cell_t blank_of(const term_panel_t *p) {
+    return make_cell(p, 0, TERM_ATTR_NORMAL);
 }
 
 /* ---- Key queue ----------------------------------------------------------- */
@@ -130,22 +134,61 @@ static bool is_connected(uint8_t ch) {
     return (ch >= TERM_CH_HLINE && ch <= TERM_CH_CROSS) || ch == TERM_CH_BLOCK;
 }
 
-/* The pixels of one cell row for each 6-bit mask, bit (CELL_W-1) leftmost.
- * ponytail: two fixed colors; per-color tables (or a per-pixel loop) once
- * color arrives. */
+/* The pixels of one cell row for each 6-bit mask, bit (CELL_W-1) leftmost,
+ * per color pair. Slot 0 is white on black: 0xFF where the glyph is set, 0x00
+ * elsewhere, from which any other pair is (pixel & (fg ^ bg)) ^ bg. The other
+ * slots hold the pairs drawn most recently, replaced in turn. Building a slot
+ * costs about as much as drawing a few cells in a per-pixel loop, which a
+ * table saves on every cell after that.
+ * ponytail: a UI using more than PAIRS - 1 other pairs at once rebuilds
+ * tables while drawing; raise PAIRS if that shows up in frame times. */
 #define ROW_MASKS (1 << TERM_CELL_W)
-static uint8_t row_pixels[ROW_MASKS][TERM_CELL_W];
+#define PAIRS 6
+typedef uint8_t row_table_t[ROW_MASKS][TERM_CELL_W];
+static row_table_t row_pixels[PAIRS];
+static uint8_t pair_fg[PAIRS], pair_bg[PAIRS];
+static uint8_t pair_last, pair_next;
 
 static void init_row_pixels(void) {
     for (int m = 0; m < ROW_MASKS; m++) {
         for (int x = 0; x < TERM_CELL_W; x++) {
-            row_pixels[m][x] = (m >> (TERM_CELL_W - 1 - x) & 1) ? TERM_FG : TERM_BG;
+            row_pixels[0][m][x] = (m >> (TERM_CELL_W - 1 - x) & 1) ? 0xFF : 0x00;
         }
     }
+    for (int i = 0; i < PAIRS; i++) {
+        pair_fg[i] = 0xFF; /* all white on black until used */
+        pair_bg[i] = 0x00;
+    }
+    pair_last = 0;
+    pair_next = 1;
+}
+
+static const row_table_t *pixels_for(uint8_t fg, uint8_t bg) {
+    if (pair_fg[pair_last] == fg && pair_bg[pair_last] == bg) {
+        return &row_pixels[pair_last];
+    }
+    for (uint8_t i = 0; i < PAIRS; i++) {
+        if (pair_fg[i] == fg && pair_bg[i] == bg) {
+            pair_last = i;
+            return &row_pixels[i];
+        }
+    }
+    uint8_t i = pair_next;
+    pair_next = pair_next + 1 < PAIRS ? pair_next + 1 : 1;
+    uint8_t diff = fg ^ bg;
+    const uint8_t *src = &row_pixels[0][0][0];
+    uint8_t *dst = &row_pixels[i][0][0];
+    for (int n = 0; n < ROW_MASKS * TERM_CELL_W; n++) {
+        dst[n] = (src[n] & diff) ^ bg;
+    }
+    pair_fg[i] = fg;
+    pair_bg[i] = bg;
+    pair_last = i;
+    return &row_pixels[i];
 }
 
 static void draw_cell(int col, int row, term_cell_t c) {
-    uint8_t invert = (c.bg == TERM_FG) ? ROW_MASKS - 1 : 0;
+    const row_table_t *pixels = pixels_for(c.fg, c.bg);
     const term_glyph_t *g = &term_font[c.ch];
     bool blank = (c.ch == 0 || c.ch == ' ');
     bool connected = is_connected(c.ch);
@@ -164,7 +207,7 @@ static void draw_cell(int col, int row, term_cell_t c) {
                 mask |= (1 << TERM_CHAR_GAP) - 1;
             }
         }
-        memcpy(dst, row_pixels[mask ^ invert], TERM_CELL_W);
+        memcpy(dst, (*pixels)[mask], TERM_CELL_W);
     }
 }
 
@@ -203,6 +246,8 @@ static term_panel_t *alloc_panel(term_ctx_t *ctx) {
             p->visible = 1;
             p->size = TERM_FILL;
             p->focus_attr = TERM_ATTR_REVERSE;
+            p->fg = TERM_FG;
+            p->bg = TERM_BG;
             return p;
         }
     }
@@ -235,6 +280,8 @@ term_panel_t *term_split(term_panel_t *parent, term_dir_t dir, term_size_t size)
     parent->dir = dir;
     child->parent = parent;
     child->size = size;
+    child->fg = parent->fg;
+    child->bg = parent->bg;
     if (parent->last_child) {
         parent->last_child->next = child;
     } else {
@@ -379,7 +426,7 @@ static void size_cells(term_panel_t *p) {
         term_cell_t *row = cells + (size_t)r * w;
         for (int c = 0; c < w; c++) {
             row[c] = (r < p->cells_h && c < p->cells_w) ? p->cells[(size_t)r * p->cells_w + c]
-                                                        : blank_cell;
+                                                        : blank_of(p);
         }
     }
     free(p->cells);
@@ -498,9 +545,9 @@ int term_panel_height(const term_panel_t *p) {
 
 /* ---- Composing ----------------------------------------------------------- */
 
-static void put_abs(int col, int row, uint8_t ch, uint8_t attr) {
+static void put_abs(const term_panel_t *p, int col, int row, uint8_t ch, uint8_t attr) {
     if (col >= 0 && col < TERM_COLS && row >= 0 && row < TERM_ROWS) {
-        grid[row][col] = make_cell(ch, attr);
+        grid[row][col] = make_cell(p, ch, attr);
     }
 }
 
@@ -515,33 +562,34 @@ static void draw_border(const term_panel_t *p, bool focused) {
     int y1 = p->y + p->h - 1;
 
     for (int x = x0 + 1; x < x1; x++) {
-        put_abs(x, y0, TERM_CH_HLINE, TERM_ATTR_NORMAL);
-        put_abs(x, y1, TERM_CH_HLINE, TERM_ATTR_NORMAL);
+        put_abs(p, x, y0, TERM_CH_HLINE, TERM_ATTR_NORMAL);
+        put_abs(p, x, y1, TERM_CH_HLINE, TERM_ATTR_NORMAL);
     }
     for (int y = y0 + 1; y < y1; y++) {
-        put_abs(x0, y, TERM_CH_VLINE, TERM_ATTR_NORMAL);
-        put_abs(x1, y, TERM_CH_VLINE, TERM_ATTR_NORMAL);
+        put_abs(p, x0, y, TERM_CH_VLINE, TERM_ATTR_NORMAL);
+        put_abs(p, x1, y, TERM_CH_VLINE, TERM_ATTR_NORMAL);
     }
-    put_abs(x0, y0, TERM_CH_TL, TERM_ATTR_NORMAL);
-    put_abs(x1, y0, TERM_CH_TR, TERM_ATTR_NORMAL);
-    put_abs(x0, y1, TERM_CH_BL, TERM_ATTR_NORMAL);
-    put_abs(x1, y1, TERM_CH_BR, TERM_ATTR_NORMAL);
+    put_abs(p, x0, y0, TERM_CH_TL, TERM_ATTR_NORMAL);
+    put_abs(p, x1, y0, TERM_CH_TR, TERM_ATTR_NORMAL);
+    put_abs(p, x0, y1, TERM_CH_BL, TERM_ATTR_NORMAL);
+    put_abs(p, x1, y1, TERM_CH_BR, TERM_ATTR_NORMAL);
 
     /* " Title " set into the top edge, in the focus attribute while focused. */
     if (p->title) {
         int x = x0 + 2;
-        put_abs(x - 1, y0, ' ', title_attr);
+        put_abs(p, x - 1, y0, ' ', title_attr);
         for (const char *s = p->title; *s && x < x1 - 1; s++, x++) {
-            put_abs(x, y0, (uint8_t)*s, title_attr);
+            put_abs(p, x, y0, (uint8_t)*s, title_attr);
         }
-        put_abs(x, y0, ' ', title_attr);
+        put_abs(p, x, y0, ' ', title_attr);
     }
 }
 
 /* Rebuilds a widget's retained cells from its state. */
 static void render_widget(term_panel_t *p) {
+    term_cell_t blank = blank_of(p);
     for (int i = 0; i < p->cells_w * p->cells_h; i++) {
-        p->cells[i] = blank_cell;
+        p->cells[i] = blank;
     }
     term_widget_draw(p);
     p->stale = 0;
@@ -555,6 +603,16 @@ static void compose(term_panel_t *p) {
     }
     if (p->stale && p->kind != TERM_KIND_PLAIN) {
         render_widget(p);
+    }
+    /* A container in a different background than its parent's fills its
+     * area, so gaps between its children show its color. */
+    if (p->first_child && p->bg != (p->parent ? p->parent->bg : TERM_BG)) {
+        term_cell_t blank = blank_of(p);
+        for (int r = p->y; r < p->y + p->h; r++) {
+            for (int c = p->x; c < p->x + p->w; c++) {
+                grid_row[r][c] = blank;
+            }
+        }
     }
     if (p->border) {
         draw_border(p, p == p->ctx->focus);
@@ -621,7 +679,7 @@ void term_put(term_panel_t *p, int col, int row, uint8_t ch, uint8_t attr) {
     if (col < 0 || row < 0 || col >= p->cells_w || row >= p->cells_h) {
         return;
     }
-    p->cells[(size_t)row * p->cells_w + col] = make_cell(ch, attr);
+    p->cells[(size_t)row * p->cells_w + col] = make_cell(p, ch, attr);
 }
 
 void term_panel_move(term_panel_t *p, int col, int row) {
@@ -632,6 +690,12 @@ void term_panel_move(term_panel_t *p, int col, int row) {
 void term_panel_set_attr(term_panel_t *p, uint8_t attr) {
     p->attr = attr;
     term_panel_touch(p); /* widgets draw in it */
+}
+
+void term_panel_set_colors(term_panel_t *p, uint8_t fg, uint8_t bg) {
+    p->fg = fg;
+    p->bg = bg;
+    term_panel_touch(p);
 }
 
 void term_panel_set_focus_attr(term_panel_t *p, uint8_t attr) {
@@ -682,7 +746,7 @@ void term_panel_putc(term_panel_t *p, char c) {
     }
     /* term_put(), inlined: this runs for every character printed. */
     if (p->cur_x < p->cells_w && p->cur_y < p->cells_h) {
-        p->cells[(size_t)p->cur_y * p->cells_w + p->cur_x] = make_cell((uint8_t)c, p->attr);
+        p->cells[(size_t)p->cur_y * p->cells_w + p->cur_x] = make_cell(p, (uint8_t)c, p->attr);
         p->ctx->dirty = 1;
     }
     if (p->cur_x < 255) {
@@ -713,8 +777,9 @@ void term_panel_repeat(term_panel_t *p, char c, int count) {
 
 void term_panel_clear(term_panel_t *p) {
     ensure_layout(p->ctx);
+    term_cell_t blank = blank_of(p);
     for (int i = 0; i < p->cells_w * p->cells_h; i++) {
-        p->cells[i] = blank_cell;
+        p->cells[i] = blank;
     }
     p->cur_x = 0;
     p->cur_y = 0;

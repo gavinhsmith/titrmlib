@@ -25,7 +25,7 @@ Keys and the events delivered to the app.
 enum term_key_t
 ```
 
-Defined in src/titrm.h:94
+Defined in src/titrm.h:106
 
 Keys, as delivered in [term_event_t.key](#key).
 
@@ -58,7 +58,7 @@ Keys, as delivered in [term_event_t.key](#key).
 enum term_event_type_t
 ```
 
-Defined in src/titrm.h:122
+Defined in src/titrm.h:134
 
 Kinds of event passed to the handlers.
 
@@ -88,7 +88,7 @@ Events go to the focused widget first (keys only), then the active scene's handl
 using term_update_fn = bool(*)
 ```
 
-Defined in src/titrm.h:148
+Defined in src/titrm.h:160
 
 An event handler: the global one given to [term_run()](api-lifecycle.md#term_run), or a scene's.
 
@@ -108,7 +108,7 @@ Return true if the event was handled, so it goes no further along the chain; fal
 int term_alpha_mode(const term_ctx_t * ctx)
 ```
 
-Defined in src/titrm.h:155
+Defined in src/titrm.h:167
 
 Alpha state, for status displays: 0 = off, 1 = next key only, 2 = locked.
 
@@ -129,7 +129,7 @@ Alpha state, for status displays: 0 = off, 1 = next key only, 2 = locked.
 struct term_event_t
 ```
 
-Defined in src/titrm.h:134
+Defined in src/titrm.h:146
 
 An event passed to the update function.
 
@@ -153,7 +153,7 @@ term_event_type_t type
 
 Type: [`term_event_type_t`](#term_event_type_t)
 
-Defined in src/titrm.h:135
+Defined in src/titrm.h:147
 
 what happened
 
@@ -167,7 +167,7 @@ term_key_t key
 
 Type: [`term_key_t`](#term_key_t)
 
-Defined in src/titrm.h:136
+Defined in src/titrm.h:148
 
 TERM_EV_KEY
 
@@ -179,7 +179,7 @@ TERM_EV_KEY
 char ch
 ```
 
-Defined in src/titrm.h:137
+Defined in src/titrm.h:149
 
 TERM_EV_KEY with TERM_KEY_CHAR: typed character
 
@@ -193,7 +193,7 @@ term_panel_t * panel
 
 Type: [`term_panel_t`](api-types.md#term_panel_t) *
 
-Defined in src/titrm.h:138
+Defined in src/titrm.h:150
 
 widget events: the source. key events: focused panel
 
@@ -205,7 +205,7 @@ widget events: the source. key events: focused panel
 int value
 ```
 
-Defined in src/titrm.h:139
+Defined in src/titrm.h:151
 
 TERM_EV_SUBMIT and TERM_EV_CHANGE from a list: item index
 

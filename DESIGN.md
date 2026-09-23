@@ -151,7 +151,7 @@ the 50 ms goal once step 1 lands.
 | 3. Scenes | Done |
 | 4. Overlays | Done |
 | 5. Widget set and demo | Done |
-| 6. Color | Not started |
+| 6. Color | Done |
 
 Steps 1 and 2 were built together: with retained output, the app has to be
 told about everything that changes what it shows, which is what step 2 adds.
@@ -248,6 +248,24 @@ told about everything that changes what it shows, which is what step 2 adds.
 - **The demo** now uses a text log, a password dialog (overlay with
   buttons), and a help scene; `demo.gif` shows the stage 1 demo and needs
   re-recording.
+
+### Decisions made while building step 6
+
+- **API:** `term_panel_set_colors(panel, fg, bg)`, palette indices, with
+  `TERM_COLOR_*` for common ones. It behaves like `term_panel_set_attr`:
+  it applies to output that follows, to clearing and to widgets, which
+  redraw in it. There are no per-cell colors beyond that and no separate
+  focus colors: `TERM_ATTR_REVERSE` swaps the panel's colors, so focus shows
+  in color already.
+- **Inheritance:** a panel split from another starts with its colors, and a
+  container fills its area when its background differs from its parent's.
+  Coloring an overlay colors the whole dialog.
+- **Drawing:** one 64-mask pixel table per color pair, cached for white on
+  black plus the five most recent pairs. A per-pixel loop took a colored
+  full screen from ~480 ms to ~750 ms; with the tables it is ~440 ms.
+- **Orange:** graphx's `gfx_orange` (0xE3) shows as yellow in the default
+  palette (index i is the 1555 color `i | i << 8`), so `TERM_COLOR_ORANGE`
+  is 0xE1. `tests/hw/run.py` now renders 8bpp dumps with that palette.
 
 ## Still to decide
 
