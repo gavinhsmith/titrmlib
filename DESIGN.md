@@ -1,7 +1,7 @@
 # Phase 2 design
 
 Status: in progress on the `phase-2` branch; see [Progress](#progress).
-titrmlib is at v0.1.0, so the API may change freely until v1.0.
+titrmlib is at v0.2.0, so the API may change freely until v1.0.
 
 Phase 2 reworks how titrmlib renders and routes input, then adds scenes,
 overlays, a revised widget set and color. Function and type names below are
