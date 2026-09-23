@@ -13,9 +13,6 @@
 
 ## Known issues
 
-- **`make clean` doesn't remove built programs.** The `%.clean` targets are
-  declared `.PHONY`, so make never applies the pattern rule to them. CEdev's own
-  clean also leaves `bin/` files in place on Windows.
 - **Quick repeated key presses can merge.** `os_GetCSC()` holds a single key
   between polls, so two presses within one frame count as one. A typical update
   takes about 105 ms and a full-screen redraw about 400 ms (emulated).

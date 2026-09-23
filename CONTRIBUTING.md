@@ -34,6 +34,7 @@ You need:
 make               # build every example into bin/<example>/
 make demo          # or one of them
 make hw-build      # build the hardware test programs
+make clean         # remove all build output
 ```
 
 The library is compiled straight into each program (see `project.mk`). Keep

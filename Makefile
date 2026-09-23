@@ -11,7 +11,7 @@ HWTESTS := $(addprefix hw_,$(notdir $(patsubst %/,%,$(dir $(wildcard tests/hw/*/
 
 PYTHON ?= python
 
-.PHONY: all clean hw-build hw-test hw-record $(EXAMPLES) $(HWTESTS) $(addsuffix .clean,$(EXAMPLES) $(HWTESTS))
+.PHONY: all clean hw-build hw-test hw-record $(EXAMPLES) $(HWTESTS)
 
 all: $(EXAMPLES)
 
@@ -29,8 +29,7 @@ hw-test:
 hw-record:
 	$(PYTHON) tests/hw/run.py --record $(HW_ARGS)
 
-clean: $(addsuffix .clean,$(EXAMPLES) $(HWTESTS))
-	$(PYTHON) -c "import shutil; shutil.rmtree('tests/hw/build', ignore_errors=True)"
-
-%.clean:
-	$(MAKE) -f project.mk EXAMPLE=$* clean
+# Removes all build output. Done here rather than with CEdev's clean, whose
+# Windows version silently fails on paths with '/' in them.
+clean:
+	$(PYTHON) -c "import glob, shutil; [shutil.rmtree(d, ignore_errors=True) for d in glob.glob('bin/*/') + ['obj', 'tests/hw/build']]"
