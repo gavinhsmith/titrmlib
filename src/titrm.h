@@ -33,7 +33,7 @@ extern "C" {
  */
 
 /** @brief titrmlib's version, matching the release tag without the "v" (e.g. "1.0.0"). */
-#define TITRM_VERSION "0.3.0"
+#define TITRM_VERSION "0.4.0"
 
 /** @} */
 
@@ -94,19 +94,23 @@ int term_rows(void);
 /** @brief Cell attribute: struck through, joining across cells. */
 #define TERM_ATTR_STRIKE 16
 
-/*
- * Inline styles: ESC (0x1B) followed by 0x40 | TERM_ATTR_* bits sets the
- * style from there on, taking no space. Printed with term_panel_print() and
- * friends it sets the panel's attribute; in a text widget, list item or label
- * it adds to the widget's attribute until the next escape or the end of the
- * line. An ESC not followed by 0x40-0x5F is dropped.
+/**
+ * @brief Inline style: back to normal, from here on in a string.
+ *
+ * The TERM_S_* inline styles are ESC (0x1B) followed by 0x40 | TERM_ATTR_*
+ * bits, so other combinations can be written the same way, e.g. `"\x1b" "J"`
+ * for bold and underlined. They take no space. Printed with
+ * term_panel_print() and friends, they set the panel's attribute; in a text
+ * widget, list item or label they add to the widget's attribute until the
+ * next one or the end of the line. An ESC not followed by 0x40-0x5F is
+ * dropped.
  */
-#define TERM_S_NORMAL    "\x1b" "@" /**< inline: back to normal */
-#define TERM_S_REVERSE   "\x1b" "A" /**< inline: reverse video */
-#define TERM_S_BOLD      "\x1b" "B" /**< inline: bold */
-#define TERM_S_ITALIC    "\x1b" "D" /**< inline: italic */
-#define TERM_S_UNDERLINE "\x1b" "H" /**< inline: underlined */
-#define TERM_S_STRIKE    "\x1b" "P" /**< inline: struck through */
+#define TERM_S_NORMAL    "\x1b" "@"
+#define TERM_S_REVERSE   "\x1b" "A" /**< Inline style: reverse video (see TERM_S_NORMAL). */
+#define TERM_S_BOLD      "\x1b" "B" /**< Inline style: bold (see TERM_S_NORMAL). */
+#define TERM_S_ITALIC    "\x1b" "D" /**< Inline style: italic (see TERM_S_NORMAL). */
+#define TERM_S_UNDERLINE "\x1b" "H" /**< Inline style: underlined (see TERM_S_NORMAL). */
+#define TERM_S_STRIKE    "\x1b" "P" /**< Inline style: struck through (see TERM_S_NORMAL). */
 
 /* Colors: indices into graphx's default palette, for
  * term_panel_set_colors(). Any other index (0-255) works too. */

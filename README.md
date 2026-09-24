@@ -22,6 +22,7 @@ graphx itself.
 - **Focus:** your app decides which panel has focus; the focused widget gets keys first
 - **Widgets:** text (with scrolling and auto-scroll, for logs), list, input, button, checkbox, progress bar, plus borders and titles; build your own with a key handler
 - **Color:** foreground and background per panel, from the 256-color palette; reverse video swaps them
+- **Text styles:** bold, italic, underline and strikethrough, per panel or inline in a string, and tab stops
 - **Glyphs:** box-drawing characters and small status icons (check marks, signal bars, arrows) alongside ASCII
 - **Ticks:** timed events for animation and polling
 
@@ -105,6 +106,16 @@ and to `term_panel_clear`; widgets, borders and titles are drawn in them.
 Panels split from a panel start with its colors, so coloring a dialog colors
 everything in it. `TERM_ATTR_REVERSE` swaps a panel's two colors. The default
 is white on black.
+
+**Styles.** `TERM_ATTR_BOLD`, `TERM_ATTR_ITALIC`, `TERM_ATTR_UNDERLINE` and
+`TERM_ATTR_STRIKE` combine with each other and with `TERM_ATTR_REVERSE`, e.g.
+`term_panel_set_attr(p, TERM_ATTR_BOLD | TERM_ATTR_UNDERLINE)`. To style part
+of a string, put `TERM_S_BOLD`, `TERM_S_NORMAL` and the like inside it:
+`"press " TERM_S_BOLD "enter" TERM_S_NORMAL " to connect"`. Printed, they set
+the panel's attribute; in a text widget, list item or label they last until
+the next one or the end of the line. Underline and strikethrough join across
+cells; box-drawing characters ignore styles. `'\t'` moves to the next tab
+stop, every 4 columns.
 
 **Widgets** turn a panel into one with built-in content and key handling:
 `term_make_text`, `term_make_button`, `term_make_checkbox`, `term_make_list`,

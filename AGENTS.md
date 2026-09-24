@@ -19,7 +19,7 @@ Update this section when a stage finishes or the release state changes.
 - Library: cell grid, 5×7 font, keypad input, `term_run` loop, panel tree,
   focus and widgets (text, list, input, log, progress). Rendering has been
   optimized; frame times are in [Performance](#performance-on-the-ez80).
-- Tests: host unit tests (`tests/`) and 7 hardware tests in CEmu's
+- Tests: host unit tests (`tests/`) and 12 hardware tests in CEmu's
   autotester (`tests/hw/`), passing on OS 5.3 and on arTIfiCE-jailbroken
   OS 5.8.5 ROMs.
 - Docs: API reference built by Doxygen + moxygen into `docs/` (index
@@ -33,11 +33,15 @@ Update this section when a stage finishes or the release state changes.
   **draft** release with `titrmlib-<tag>.zip` (sources and licenses). The
   maintainer adds the changes and publishes it.
 
-**Version:** `TITRM_VERSION` is `"0.3.0"`. v0.1.0 and v0.2.0 are released;
-v0.3.0 (code page 437) is tagged, with its release still a draft.
+**Version:** `TITRM_VERSION` is `"0.4.0"` (formatting), not yet tagged.
+v0.1.0 and v0.2.0 are released; v0.3.0 (code page 437) is tagged, with its
+release still a draft.
 
 The ASCII glyphs have been checked on a real TI-84 Plus CE; the CP437 glyphs
-added in v0.3.0 have only been checked in CEmu.
+added in v0.3.0 and the styles added in v0.4.0 have only been checked in CEmu.
+
+**v0.4.0 (formatting):** bold, italic, underline and strikethrough
+attributes, inline style escapes (`TERM_S_BOLD` etc.) and tab stops.
 
 **Phase 2: complete, merged to `main` in PR #1 and released as v0.2.0.**
 The design and build order are in [DESIGN.md](DESIGN.md). It added retained
@@ -68,8 +72,9 @@ Breaking API changes are fine until v1.0.
 | `docs/` | API reference generated from the doc comments in `src/titrm.h` by Doxygen + moxygen (`make docs`); never edit by hand. Every public declaration needs a `/** */` comment inside its section's `@defgroup`; regenerate after changing the header |
 
 - **Grid:** 5×7 glyphs in 6×8 cells give 53×30 cells, centered on the
-  320×240 screen. A cell (`term_cell_t`) is a glyph code plus foreground and
-  background palette colors.
+  320×240 screen. A cell (`term_cell_t`) is a glyph code, foreground and
+  background palette colors, and a style byte (the `TERM_ATTR_*` bits other
+  than REVERSE).
 - **Retained output:** each leaf panel owns `iw × ih` cells (`p->cells`,
   sized by layout, keeping what fits on resize). Output writes into them and
   marks the context dirty; panels with children hold no cells. Widgets
@@ -79,7 +84,7 @@ Breaking API changes are fine until v1.0.
   `shown` and draws only changed cells. Composing is cheap; nothing is
   reprinted per frame.
 - **Colors:** each panel has `fg`/`bg` palette indices, copied into cells as
-  they are written (`make_cell`; `TERM_ATTR_REVERSE` swaps them). Children
+  they are written (`set_cell`; `TERM_ATTR_REVERSE` swaps them). Children
   start with their parent's colors, and a container whose background differs
   from its parent's fills its area when composed.
 - **Glyph drawing:** `draw_cell` writes into `gfx_vbuffer` directly, copying
@@ -88,8 +93,17 @@ Breaking API changes are fine until v1.0.
   most recent other pairs, built from the white-on-black one with
   `(pixel & (fg ^ bg)) ^ bg`. Box-drawing characters and blocks
   (0xB3–0xDF) stretch into the gaps between cells so lines join up.
+- **Styles** change each row's mask before the table lookup: bold smears it
+  one pixel right, italic shifts rows 0–2 right, underline (row 7) and
+  strikethrough (`STRIKE_ROW`) fill it, gap column included, so they join.
+  Box drawing ignores them. Inline, ESC then `0x40 | bits` sets the style:
+  `term_panel_putc` keeps the pending ESC in `p->esc` and sets `p->attr`;
+  `text_layout` and `put_str` track a style per character, reset at each
+  line, and add it to the widget's attribute.
 - **Characters:** 0x20–0x7E are ASCII; 0x01–0x1F and 0x7F–0xFF follow code
-  page 437, except that 0x13–0x16 are signal icons. The glyphs titrmlib uses
+  page 437, except that 0x13–0x16 are signal icons. `\t`, `\n`, `\r` and ESC
+  (0x1B) are control codes, so their CP437 glyphs can't be printed; tab stops
+  are every `TERM_TAB` (4) columns. The glyphs titrmlib uses
   are named `TERM_CH_*` (as characters) and `TERM_S_*` (as string literals).
   Box-drawing glyphs are generated from their line weights in `gen_font.py`.
 - **Scenes:** root panels (no parent) are scenes. `ctx->root` is the first,
@@ -141,6 +155,9 @@ Code that is cheap on a desktop can be slow here:
   `uint8_t` arithmetic to avoid them.
 - Every graphx call has noticeable overhead; drawing a cell with graphx
   primitives cost about 1 ms.
+- Don't return 4-byte structs such as `term_cell_t` by value: clang builds
+  them as a 32-bit integer with `__lshl`/`__ladd` calls per byte. Write the
+  fields through a pointer (`set_cell`).
 - Check the generated assembly in `obj/<program>/lto.s` when a hot path is slow.
 
 Update times (the app's printing plus the frame) are measured by the `perf`
@@ -149,9 +166,9 @@ hardware test against fixed budgets:
 | Update | Emulated time | Budget |
 |---|---|---|
 | Nothing changed | ~1 ms | 5 ms |
-| One row changed | ~46 ms | 50 ms (the phase 2 goal) |
-| Every cell changed | ~483 ms | 600 ms |
-| Every cell changed, in color | ~440 ms | 600 ms |
+| One row changed | ~47 ms | 50 ms (the phase 2 goal) |
+| Every cell changed | ~462 ms | 600 ms |
+| Every cell changed, in color | ~462 ms | 600 ms |
 
 Most of a full-screen update is drawing 1,590 cells at ~0.2 ms each, plus a
 keypad scan per row. The `widgets` hardware test runs at the autotester's
