@@ -27,7 +27,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "D29BFD17"
+        "0BBEAC10"
       ]
     },
     "2": {
@@ -36,7 +36,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "3D1CFFD2"
+        "E439AED5"
       ]
     },
     "3": {
@@ -45,7 +45,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "AA68A449"
+        "734DF54E"
       ]
     },
     "4": {
@@ -54,7 +54,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "3D1CFFD2"
+        "E439AED5"
       ]
     },
     "5": {

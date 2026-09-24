@@ -56,7 +56,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "C04A5739"
+        "3FF1ABDB"
       ]
     },
     "2": {
@@ -65,7 +65,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "EAAA7C39"
+        "973F2022"
       ]
     },
     "3": {
@@ -74,7 +74,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "48C1D258"
+        "B77A2EBA"
       ]
     },
     "4": {
@@ -83,7 +83,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "39E490DB"
+        "C65F6C39"
       ]
     },
     "5": {
@@ -92,7 +92,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "64F8183A"
+        "9B43E4D8"
       ]
     },
     "6": {
@@ -101,7 +101,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "407DC3DC"
+        "BFC63F3E"
       ]
     },
     "7": {
@@ -110,7 +110,7 @@
       "start": "vram_start",
       "size": "vram_8_size",
       "expected_CRCs": [
-        "18EBA40D"
+        "E75058EF"
       ]
     },
     "8": {

@@ -161,10 +161,15 @@ alpha; `[alpha]` itself arrives as `TERM_KEY_ALPHA`, and `term_alpha_mode()`
 reports the state. Held arrow keys and `[del]` repeat. `term_quit(ctx,
 result)` ends `term_run()`, which returns `result`.
 
-**Special characters.** Codes 0x80–0xFF hold box-drawing characters and
-icons, named `TERM_CH_*` (e.g. `TERM_CH_CHECK`). The same characters as string
-literals are `TERM_S_*`: `TERM_S_CHECK " Connected"`. The full table is in
-[`src/FONT.md`](src/FONT.md).
+**Special characters.** Codes outside printable ASCII follow code page 437,
+the IBM PC character set: box drawing (single and double lines), blocks and
+shades, accented letters, Greek and math symbols. The exception is 0x13–0x16,
+which hold signal-strength icons. The characters titrmlib uses are named
+`TERM_CH_*` (e.g. `TERM_CH_SIG3`), and the same characters as string literals
+are `TERM_S_*`: `TERM_S_SIG3 " HomeWiFi"`. Any other code can go straight into
+a string (`"caf\x82"` prints `café`). 0x00, `\n` (0x0A) and `\r` (0x0D) can't
+be printed from a string, so place those glyphs with `term_put`. The full table
+is in [`src/FONT.md`](src/FONT.md).
 
 ## Limits
 

@@ -31,8 +31,8 @@ static void print_table(term_panel_t *p) {
 static void print_reverse(term_panel_t *p) {
     term_panel_set_attr(p, TERM_ATTR_REVERSE);
     term_panel_print(p, "ABC abc 123\n");
-    term_panel_print(p, TERM_S_CHECK TERM_S_CROSSMARK TERM_S_DOT TERM_S_DOT_EMPTY
-                        TERM_S_ARROW_R TERM_S_ARROW_D TERM_S_ARROW_U TERM_S_SMILE "\n");
+    term_panel_print(p, "\x03\x04\x05\x06" TERM_S_ARROW_R TERM_S_ARROW_D TERM_S_ARROW_U
+                        TERM_S_SMILE "\x82\x8E\xA4\xE1\xE3\xF1\n");
     term_panel_set_attr(p, TERM_ATTR_NORMAL);
     term_panel_print(p, "norm");
     term_panel_set_attr(p, TERM_ATTR_REVERSE);
@@ -50,9 +50,12 @@ static void print_joins(term_panel_t *p) {
                      TERM_S_LTEE TERM_S_HLINE TERM_S_HLINE TERM_S_CROSS TERM_S_HLINE TERM_S_HLINE TERM_S_RTEE "\n"
                      TERM_S_VLINE "EF" TERM_S_VLINE "GH" TERM_S_VLINE "\n"
                      TERM_S_BL TERM_S_HLINE TERM_S_HLINE TERM_S_BTEE TERM_S_HLINE TERM_S_HLINE TERM_S_BR "\n"
-                     "\n"
+                     "\xC9\xCD\xCD\xD1\xCD\xCD\xBB\n" /* double lines, meeting single ones */
+                     "\xBA" "AB" "\xB3" "CD" "\xBA\n"
+                     "\xC7\xC4\xC4\xC5\xC4\xC4\xB6\n"
+                     "\xC8\xCD\xCD\xCF\xCD\xCD\xBC\n"
                      TERM_S_SIG0 TERM_S_SIG1 TERM_S_SIG2 TERM_S_SIG3 " signal\n"
-                     TERM_S_SHADE TERM_S_SHADE TERM_S_BLOCK TERM_S_BLOCK TERM_S_SHADE TERM_S_SHADE " fill");
+                     "\xB0\xB0\xB1\xB1\xB2\xB2\xDB\xDB\xDC\xDC\xDF\xDF\xDD\xDE");
 }
 
 static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {

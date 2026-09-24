@@ -296,7 +296,7 @@ static void checkbox_draw(term_panel_t *p) {
     uint8_t attr = focused(p) ? p->focus_attr : p->attr;
     fill_row(p, 0, 0, w, attr);
     term_put(p, 0, 0, '[', attr);
-    term_put(p, 1, 0, p->u.text.checked ? TERM_CH_CHECK : ' ', attr);
+    term_put(p, 1, 0, p->u.text.checked ? 'x' : ' ', attr);
     term_put(p, 2, 0, ']', attr);
     put_str(p, 4, 0, p->u.text.buf ? p->u.text.buf : "", w - 4, attr);
 }

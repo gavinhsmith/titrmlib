@@ -33,7 +33,7 @@ Update this section when a stage finishes or the release state changes.
   **draft** release with `titrmlib-<tag>.zip` (sources and licenses). The
   maintainer adds the changes and publishes it.
 
-**Version:** `TITRM_VERSION` is `"0.2.0"`. No tags or releases exist yet.
+**Version:** `TITRM_VERSION` is `"0.3.0"`. No tags or releases exist yet.
 
 The font and icons have been checked on a real TI-84 Plus CE.
 
@@ -86,11 +86,12 @@ update it if a decision changes during implementation.
   each cell row from `row_pixels`, a table of 6-pixel patterns for each of 64
   masks. There is one table per color pair, for white on black and the five
   most recent other pairs, built from the white-on-black one with
-  `(pixel & (fg ^ bg)) ^ bg`. Box-drawing characters and `TERM_CH_BLOCK` stretch
-  into the gaps between cells so lines join up.
-- **Characters:** 0x20–0x7E are ASCII. 0x80–0xFF hold box-drawing
-  characters and icons, named `TERM_CH_*` (as characters) and `TERM_S_*`
-  (as string literals).
+  `(pixel & (fg ^ bg)) ^ bg`. Box-drawing characters and blocks
+  (0xB3–0xDF) stretch into the gaps between cells so lines join up.
+- **Characters:** 0x20–0x7E are ASCII; 0x01–0x1F and 0x7F–0xFF follow code
+  page 437, except that 0x13–0x16 are signal icons. The glyphs titrmlib uses
+  are named `TERM_CH_*` (as characters) and `TERM_S_*` (as string literals).
+  Box-drawing glyphs are generated from their line weights in `gen_font.py`.
 - **Scenes:** root panels (no parent) are scenes. `ctx->root` is the first,
   `ctx->scene` the active one; only it is composed and gets events. Layout
   covers every scene, so hidden scenes can be printed into. A scene root keeps
