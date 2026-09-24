@@ -755,6 +755,17 @@ void term_panel_wrap(term_panel_t *p, bool wrap) {
 
 void term_panel_putc(term_panel_t *p, char c) {
     ensure_layout(p->ctx);
+    if (p->esc) {
+        p->esc = 0;
+        if (TERM_IS_ESC_ARG(c)) {
+            p->attr = c & 0x1F;
+            return;
+        }
+    }
+    if (c == TERM_ESC) {
+        p->esc = 1;
+        return;
+    }
     if (c == '\n') {
         p->cur_x = 0;
         if (p->cur_y < 255) {

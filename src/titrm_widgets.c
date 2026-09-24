@@ -11,9 +11,27 @@
 
 #define TEXT_LIMIT 1024 /* default term_text_limit() */
 
+/* Bytes of an inline style escape at `s` (see TERM_S_*): 2, or 1 for an ESC
+ * without its argument, which is dropped; 0 if `s` isn't an escape. */
+static int esc_len(const char *s) {
+    if (*s != TERM_ESC) {
+        return 0;
+    }
+    return TERM_IS_ESC_ARG(s[1]) ? 2 : 1;
+}
+
 static void put_str(term_panel_t *p, int col, int row, const char *s, int max, uint8_t attr) {
-    for (int i = 0; s[i] && i < max; i++) {
-        term_put(p, col + i, row, (uint8_t)s[i], attr);
+    uint8_t style = 0;
+    for (int i = 0; *s && i < max;) {
+        int e = esc_len(s);
+        if (e) {
+            if (e == 2) {
+                style = s[1] & 0x1F;
+            }
+            s += e;
+            continue;
+        }
+        term_put(p, col + i++, row, (uint8_t)*s++, attr | style);
     }
 }
 
@@ -175,6 +193,8 @@ static int text_layout(term_panel_t *p, bool draw, int top, uint8_t attr) {
     }
     const char *s = p->u.text.buf ? p->u.text.buf : "";
     char line[TERM_COLS];
+    uint8_t line_style[TERM_COLS]; /* inline style of each character in `line` */
+    uint8_t style = 0;
     int len = 0;
     int rows = 0;
     bool soft = false; /* this row began with a wrap, not a '\n' or the start */
@@ -188,7 +208,7 @@ static int text_layout(term_panel_t *p, bool draw, int top, uint8_t attr) {
             }                                                                     \
             int col = p->align == TERM_ALIGN_CENTER ? (w - n) / 2 : 0;            \
             for (int i = 0; i < n; i++) {                                         \
-                term_put(p, col + i, rows - top, (uint8_t)line[i], attr);         \
+                term_put(p, col + i, rows - top, (uint8_t)line[i], attr | line_style[i]); \
             }                                                                     \
         }                                                                         \
         rows++;                                                                   \
@@ -196,29 +216,51 @@ static int text_layout(term_panel_t *p, bool draw, int top, uint8_t attr) {
     } while (0)
 
     while (*s) {
-        if (*s == '\n') {
+        if (*s == TERM_ESC) {
+            if (esc_len(s) == 2) {
+                style = s[1] & 0x1F;
+            }
+            s += esc_len(s);
+        } else if (*s == '\n') {
             EMIT();
             soft = false;
+            style = 0; /* inline styles end with the line */
             s++;
         } else if (*s == ' ') {
             if (len < w && !(len == 0 && soft)) {
+                line_style[len] = style;
                 line[len++] = ' '; /* indentation is kept, except on a wrapped row */
             }
             s++;
         } else {
+            /* A word: `n` bytes, `width` of them shown (escapes take none). */
             int n = 0;
+            int width = 0;
             while (s[n] && s[n] != ' ' && s[n] != '\n') {
-                n++;
+                if (s[n] == TERM_ESC) {
+                    n += esc_len(s + n);
+                } else {
+                    n++;
+                    width++;
+                }
             }
-            if (len > 0 && len + n > w) {
+            if (len > 0 && len + width > w) {
                 EMIT();
                 soft = true;
             }
             for (int i = 0; i < n; i++) {
+                if (s[i] == TERM_ESC) {
+                    if (esc_len(s + i) == 2) {
+                        style = s[i + 1] & 0x1F;
+                    }
+                    i += esc_len(s + i) - 1;
+                    continue;
+                }
                 if (len >= w) {
                     EMIT();
                     soft = true;
                 }
+                line_style[len] = style;
                 line[len++] = s[i];
             }
             s += n;

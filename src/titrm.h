@@ -94,6 +94,20 @@ int term_rows(void);
 /** @brief Cell attribute: struck through, joining across cells. */
 #define TERM_ATTR_STRIKE 16
 
+/*
+ * Inline styles: ESC (0x1B) followed by 0x40 | TERM_ATTR_* bits sets the
+ * style from there on, taking no space. Printed with term_panel_print() and
+ * friends it sets the panel's attribute; in a text widget, list item or label
+ * it adds to the widget's attribute until the next escape or the end of the
+ * line. An ESC not followed by 0x40-0x5F is dropped.
+ */
+#define TERM_S_NORMAL    "\x1b" "@" /**< inline: back to normal */
+#define TERM_S_REVERSE   "\x1b" "A" /**< inline: reverse video */
+#define TERM_S_BOLD      "\x1b" "B" /**< inline: bold */
+#define TERM_S_ITALIC    "\x1b" "D" /**< inline: italic */
+#define TERM_S_UNDERLINE "\x1b" "H" /**< inline: underlined */
+#define TERM_S_STRIKE    "\x1b" "P" /**< inline: struck through */
+
 /* Colors: indices into graphx's default palette, for
  * term_panel_set_colors(). Any other index (0-255) works too. */
 #define TERM_COLOR_BLACK  0x00 /**< the default background */

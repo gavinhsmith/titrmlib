@@ -517,6 +517,90 @@ static void test_styles(void) {
     CHECK_EQ(row_mask(0, 0, TERM_CELL_H - 1), 0x3F);
 }
 
+static uint8_t style_at(int col, int row) { return grid[row][col].style; }
+
+static void test_inline_styles_print(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_root(ctx);
+    term_panel_print(p, "a" TERM_S_BOLD "b" TERM_S_UNDERLINE "c" TERM_S_NORMAL "d");
+    term_panel_print(p, "\x1b");         /* an escape split across calls */
+    term_panel_print(p, "Le" TERM_S_NORMAL); /* 'L' = 0x40 | italic | underline */
+    term_panel_print(p, "\x1b" "zf");   /* no argument: the ESC is dropped */
+    draw(ctx);
+
+    CHECK_STR(text_at(0, 0, 7), "abcdezf");
+    CHECK_EQ(style_at(0, 0), 0);
+    CHECK_EQ(style_at(1, 0), TERM_ATTR_BOLD);
+    CHECK_EQ(style_at(2, 0), TERM_ATTR_UNDERLINE);
+    CHECK_EQ(style_at(3, 0), 0);
+    CHECK_EQ(style_at(4, 0), TERM_ATTR_ITALIC | TERM_ATTR_UNDERLINE);
+    CHECK_EQ(style_at(5, 0), 0);
+    CHECK_EQ(p->attr, TERM_ATTR_NORMAL);
+
+    /* TERM_S_REVERSE sets the attribute, reverse included. */
+    term_panel_print(p, TERM_S_REVERSE "r");
+    draw(ctx);
+    CHECK_EQ(attr_at(7, 0), TERM_ATTR_REVERSE);
+    CHECK_EQ(p->attr, TERM_ATTR_REVERSE);
+}
+
+static void test_inline_styles_text(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_HORIZONTAL, TERM_FIXED(7));
+    term_make_text(p, "ab " TERM_S_BOLD "cd" TERM_S_NORMAL "ef gh\n" /* escapes take no width */
+                      TERM_S_UNDERLINE "one two six\n"              /* wraps, still underlined */
+                      "x");                                           /* the line ended: plain */
+    draw(ctx);
+
+    CHECK_STR(text_at(0, 0, 7), "ab cdef");
+    CHECK_EQ(style_at(2, 0), 0);
+    CHECK_EQ(style_at(3, 0), TERM_ATTR_BOLD);
+    CHECK_EQ(style_at(4, 0), TERM_ATTR_BOLD);
+    CHECK_EQ(style_at(5, 0), 0);
+    CHECK_STR(text_at(0, 1, 7), "gh     ");
+    CHECK_STR(text_at(0, 2, 7), "one two");
+    CHECK_EQ(style_at(0, 2), TERM_ATTR_UNDERLINE);
+    CHECK_EQ(style_at(3, 2), TERM_ATTR_UNDERLINE); /* the space between words too */
+    CHECK_STR(text_at(0, 3, 3), "six");
+    CHECK_EQ(style_at(0, 3), TERM_ATTR_UNDERLINE);
+    CHECK_STR(text_at(0, 4, 1), "x");
+    CHECK_EQ(style_at(0, 4), 0);
+
+    /* Styles add to the widget's attribute. */
+    term_panel_set_attr(p, TERM_ATTR_REVERSE);
+    draw(ctx);
+    CHECK_EQ(attr_at(3, 0), TERM_ATTR_REVERSE);
+    CHECK_EQ(style_at(3, 0), TERM_ATTR_BOLD);
+
+    /* A log dropping its oldest lines can't leave a style behind. */
+    term_make_text(p, "");
+    term_text_limit(p, 12); /* the third line drops the first */
+    term_text_append(p, TERM_S_STRIKE "aaaa\n");
+    term_text_append(p, "bbbb\n");
+    term_text_append(p, "cc" TERM_S_BOLD "c\n");
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 4), "bbbb");
+    CHECK_EQ(style_at(0, 0), 0);
+    CHECK_EQ(style_at(2, 1), TERM_ATTR_BOLD);
+}
+
+static void test_inline_styles_list(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *list = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(3));
+    const char *items[] = {"a" TERM_S_ITALIC "b", "plain"};
+    term_make_list(list, items, 2);
+    term_panel_t *box = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(1));
+    term_make_checkbox(box, TERM_S_UNDERLINE "on", false);
+    draw(ctx);
+
+    CHECK_STR(text_at(1, 0, 2), "ab");
+    CHECK_EQ(style_at(1, 0), 0);
+    CHECK_EQ(style_at(2, 0), TERM_ATTR_ITALIC);
+    CHECK_STR(text_at(1, 1, 5), "plain");
+    CHECK_STR(text_at(4, 3, 2), "on");
+    CHECK_EQ(style_at(4, 3), TERM_ATTR_UNDERLINE);
+}
+
 static void test_connected_glyphs_bridge_gaps(void) {
     term_ctx_t *ctx = setup();
     term_panel_set_border(term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(3)), true);
@@ -1563,6 +1647,9 @@ static const struct {
     TEST(test_border_and_title),
     TEST(test_glyph_blit),
     TEST(test_styles),
+    TEST(test_inline_styles_print),
+    TEST(test_inline_styles_text),
+    TEST(test_inline_styles_list),
     TEST(test_flush_only_redraws_changes),
     TEST(test_connected_glyphs_bridge_gaps),
     TEST(test_output_is_retained),

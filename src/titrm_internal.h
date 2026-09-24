@@ -19,6 +19,10 @@ typedef struct {
 
 #define TERM_STYLES (TERM_ATTR_BOLD | TERM_ATTR_ITALIC | TERM_ATTR_UNDERLINE | TERM_ATTR_STRIKE)
 
+/* Inline styles: TERM_ESC then 0x40 | attribute bits (see TERM_S_*). */
+#define TERM_ESC 0x1B
+#define TERM_IS_ESC_ARG(c) (((c) & 0xE0) == 0x40)
+
 typedef enum {
     TERM_KIND_PLAIN,
     TERM_KIND_TEXT,
@@ -70,6 +74,7 @@ struct term_panel {
      * Widgets draw in `attr`, and show focus with `focus_attr`. */
     uint8_t cur_x, cur_y;
     uint8_t attr;
+    uint8_t esc; /* the last character printed was TERM_ESC */
     uint8_t focus_attr;
     uint8_t fg, bg; /* palette indices */
     uint8_t align;  /* term_align_t, for text */
