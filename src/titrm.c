@@ -17,10 +17,9 @@
 #define ORIGIN_X ((TERM_SCREEN_W - TERM_COLS * TERM_CELL_W) / 2)
 #define ORIGIN_Y ((TERM_SCREEN_H - TERM_ROWS * TERM_CELL_H) / 2)
 
-static term_cell_t grid[TERM_ROWS][TERM_COLS];  /* the frame being composed */
-static term_cell_t *grid_row[TERM_ROWS];        /* &grid[r][0]: indexing grid costs a multiply call */
 static term_cell_t shown[TERM_ROWS][TERM_COLS]; /* what is on the screen */
-static term_cell_t blank_row[TERM_COLS];        /* empty cells, copied to clear */
+static term_cell_t row_buf[TERM_COLS];          /* the screen row being composed */
+static term_cell_t blank_row[TERM_COLS];        /* empty cells: copying is faster than a loop */
 
 static const term_cell_t blank_cell = {0, TERM_FG, TERM_BG, 0};
 
@@ -234,24 +233,22 @@ static void draw_cell(int col, int row, const term_cell_t *c) {
     }
 }
 
-/* Draws only the cells that differ from what is already on screen, reading
- * the keypad after each row it had to redraw. */
-static void flush(term_ctx_t *ctx) {
-    for (int r = 0; r < TERM_ROWS; r++) {
-        if (memcmp(grid[r], shown[r], sizeof grid[r]) == 0) {
-            continue;
-        }
-        term_cell_t *want = grid[r];
-        term_cell_t *have = shown[r];
-        for (int c = 0; c < TERM_COLS; c++) {
-            if (want[c].ch != have[c].ch || want[c].fg != have[c].fg || want[c].bg != have[c].bg ||
-                want[c].style != have[c].style) {
-                draw_cell(c, r, &want[c]);
-                have[c] = want[c];
-            }
-        }
-        poll_keys(ctx);
+/* Draws the cells of row_buf that differ from screen row `r`, then reads the
+ * keypad if it drew any: a frame can take longer than a key press. */
+static void flush_row(term_ctx_t *ctx, int r) {
+    term_cell_t *have = shown[r];
+    if (memcmp(row_buf, have, sizeof row_buf) == 0) {
+        return;
     }
+    for (int c = 0; c < TERM_COLS; c++) {
+        const term_cell_t *want = &row_buf[c];
+        if (want->ch != have[c].ch || want->fg != have[c].fg || want->bg != have[c].bg ||
+            want->style != have[c].style) {
+            draw_cell(c, r, want);
+            have[c] = *want;
+        }
+    }
+    poll_keys(ctx);
 }
 
 /* ---- Panel tree ---------------------------------------------------------- */
@@ -329,8 +326,8 @@ static void free_subtree(term_panel_t *p) {
         p->ctx->focus_lost = 1; /* reported to the app at the next frame */
     }
     for (int i = 0; i < p->ctx->n_overlays; i++) {
-        if (p->ctx->overlays[i]->restore == p) {
-            p->ctx->overlays[i]->restore = NULL; /* nothing to give focus back to */
+        if (p->ctx->overlays[i]->root.restore == p) {
+            p->ctx->overlays[i]->root.restore = NULL; /* nothing to give focus back to */
         }
     }
     term_widget_free(p);
@@ -542,11 +539,12 @@ static void relayout(term_ctx_t *ctx) {
     for (int i = 0; i < TERM_MAX_PANELS; i++) {
         term_panel_t *p = &ctx->panels[i];
         if (p->in_use && !p->parent) {
-            bool overlay = p->owner != NULL;
-            p->x = overlay ? p->req_x : 0;
-            p->y = overlay ? p->req_y : 0;
-            p->w = overlay ? p->req_w : TERM_COLS;
-            p->h = overlay ? p->req_h : TERM_ROWS;
+            if (!p->owner) { /* overlays keep the rectangle they opened with */
+                p->x = 0;
+                p->y = 0;
+                p->w = TERM_COLS;
+                p->h = TERM_ROWS;
+            }
             layout(p);
         }
     }
@@ -572,43 +570,40 @@ int term_panel_height(const term_panel_t *p) {
 
 /* ---- Composing ----------------------------------------------------------- */
 
-static void put_abs(const term_panel_t *p, int col, int row, uint8_t ch, uint8_t attr) {
-    if (col >= 0 && col < TERM_COLS && row >= 0 && row < TERM_ROWS) {
-        set_cell(&grid[row][col], p, ch, attr);
+static void put_abs(const term_panel_t *p, int col, uint8_t ch, uint8_t attr) {
+    if (col < TERM_COLS) {
+        set_cell(&row_buf[col], p, ch, attr);
     }
 }
 
-static void draw_border(const term_panel_t *p, bool focused) {
-    uint8_t title_attr = focused ? p->focus_attr : TERM_ATTR_NORMAL;
+/* The border's cells on screen row `r`, with the title in the top edge. */
+static void draw_border(const term_panel_t *p, int r, bool focused) {
     if (p->w < 2 || p->h < 2) {
         return;
     }
     int x0 = p->x;
-    int y0 = p->y;
     int x1 = p->x + p->w - 1;
-    int y1 = p->y + p->h - 1;
-
+    bool top = r == p->y;
+    if (!top && r != p->y + p->h - 1) {
+        put_abs(p, x0, TERM_CH_VLINE, TERM_ATTR_NORMAL);
+        put_abs(p, x1, TERM_CH_VLINE, TERM_ATTR_NORMAL);
+        return;
+    }
     for (int x = x0 + 1; x < x1; x++) {
-        put_abs(p, x, y0, TERM_CH_HLINE, TERM_ATTR_NORMAL);
-        put_abs(p, x, y1, TERM_CH_HLINE, TERM_ATTR_NORMAL);
+        put_abs(p, x, TERM_CH_HLINE, TERM_ATTR_NORMAL);
     }
-    for (int y = y0 + 1; y < y1; y++) {
-        put_abs(p, x0, y, TERM_CH_VLINE, TERM_ATTR_NORMAL);
-        put_abs(p, x1, y, TERM_CH_VLINE, TERM_ATTR_NORMAL);
-    }
-    put_abs(p, x0, y0, TERM_CH_TL, TERM_ATTR_NORMAL);
-    put_abs(p, x1, y0, TERM_CH_TR, TERM_ATTR_NORMAL);
-    put_abs(p, x0, y1, TERM_CH_BL, TERM_ATTR_NORMAL);
-    put_abs(p, x1, y1, TERM_CH_BR, TERM_ATTR_NORMAL);
+    put_abs(p, x0, top ? TERM_CH_TL : TERM_CH_BL, TERM_ATTR_NORMAL);
+    put_abs(p, x1, top ? TERM_CH_TR : TERM_CH_BR, TERM_ATTR_NORMAL);
 
     /* " Title " set into the top edge, in the focus attribute while focused. */
-    if (p->title) {
+    if (top && p->title) {
+        uint8_t title_attr = focused ? p->focus_attr : TERM_ATTR_NORMAL;
         int x = x0 + 2;
-        put_abs(p, x - 1, y0, ' ', title_attr);
+        put_abs(p, x - 1, ' ', title_attr);
         for (const char *s = p->title; *s && x < x1 - 1; s++, x++) {
-            put_abs(p, x, y0, (uint8_t)*s, title_attr);
+            put_abs(p, x, (uint8_t)*s, title_attr);
         }
-        put_abs(p, x, y0, ' ', title_attr);
+        put_abs(p, x, ' ', title_attr);
     }
 }
 
@@ -623,37 +618,48 @@ static void render_widget(term_panel_t *p) {
     p->stale = 0;
 }
 
-/* Copies the panel tree's retained content into the grid: borders, then
- * each leaf's cells, children over parents. */
-static void compose(term_panel_t *p) {
+/* Rebuilds the stale widgets of a visible tree before it is composed. */
+static void render_stale(term_panel_t *p) {
     if (!p->visible || p->w == 0 || p->h == 0) {
         return;
     }
     if (p->stale && p->kind != TERM_KIND_PLAIN) {
         render_widget(p);
     }
+    for (term_panel_t *c = p->first_child; c; c = c->next) {
+        render_stale(c);
+    }
+}
+
+/* Composes screen row `r` of a panel tree into row_buf: borders, then each
+ * leaf's cells, children over parents. Composing a row at a time keeps one
+ * row of cells instead of a second copy of the screen. */
+static void compose_row(term_panel_t *p, int r) {
+    if (!p->visible || p->w == 0 || r < p->y || r >= p->y + p->h) {
+        return;
+    }
     /* A container in a different background than its parent's fills its
      * area, so gaps between its children show its color. */
     if (p->first_child && p->bg != (p->parent ? p->parent->bg : TERM_BG)) {
         term_cell_t blank;
         set_blank(&blank, p);
-        for (int r = p->y; r < p->y + p->h; r++) {
-            for (int c = p->x; c < p->x + p->w; c++) {
-                grid_row[r][c] = blank;
-            }
+        for (int c = p->x; c < p->x + p->w; c++) {
+            row_buf[c] = blank;
         }
     }
     if (p->border) {
-        draw_border(p, p == p->ctx->focus);
+        draw_border(p, r, p == p->ctx->focus);
     }
-    for (int r = 0; r < p->cells_h; r++) {
-        memcpy(&grid_row[p->iy + r][p->ix], p->cells + (size_t)r * p->cells_w,
+    int cr = r - p->iy;
+    if (cr >= 0 && cr < p->cells_h) {
+        memcpy(&row_buf[p->ix], p->cells + (size_t)cr * p->cells_w,
                p->cells_w * sizeof(term_cell_t));
     }
     for (term_panel_t *c = p->first_child; c; c = c->next) {
-        compose(c);
+        compose_row(c, r);
     }
 }
+
 
 /* ---- Focus --------------------------------------------------------------- */
 
@@ -1034,7 +1040,7 @@ static bool translate(term_ctx_t *ctx, uint8_t sk, term_event_t *ev) {
 /* The active scene's handler, then the global one, until one returns true. */
 static void dispatch(term_ctx_t *ctx, const term_event_t *ev) {
     term_panel_t *scene = ctx->scene;
-    if (scene->handler && scene->handler(ctx, ev, scene->handler_state)) {
+    if (scene->root.handler.fn && scene->root.handler.fn(ctx, ev, scene->root.handler.state)) {
         return;
     }
     if (ctx->update) {
@@ -1061,9 +1067,9 @@ void term_emit(term_ctx_t *ctx, term_event_type_t type, term_panel_t *panel, int
 
 /* Scene events go only to that scene's own handler. */
 static void emit_scene(term_ctx_t *ctx, term_panel_t *scene, term_event_type_t type) {
-    if (ctx->running && scene->handler) {
+    if (ctx->running && scene->root.handler.fn) {
         term_event_t ev = make_event(type, scene, 0);
-        scene->handler(ctx, &ev, scene->handler_state);
+        scene->root.handler.fn(ctx, &ev, scene->root.handler.state);
     }
 }
 
@@ -1093,8 +1099,8 @@ static void dispatch_key(term_ctx_t *ctx, const term_event_t *ev) {
 term_panel_t *term_scene_new(term_ctx_t *ctx, term_update_fn handler, void *state) {
     term_panel_t *p = alloc_panel(ctx);
     if (p) {
-        p->handler = handler;
-        p->handler_state = state;
+        p->root.handler.fn = handler;
+        p->root.handler.state = state;
         ctx->layout_dirty = 1;
     }
     return p;
@@ -1130,11 +1136,11 @@ term_panel_t *term_overlay_open(term_ctx_t *ctx, int col, int row, int w, int h)
         return NULL;
     }
     p->owner = ctx->scene;
-    p->restore = ctx->focus;
-    p->req_x = clamp(col, 0, TERM_COLS);
-    p->req_y = clamp(row, 0, TERM_ROWS);
-    p->req_w = clamp(w, 0, TERM_COLS - p->req_x);
-    p->req_h = clamp(h, 0, TERM_ROWS - p->req_y);
+    p->root.restore = ctx->focus;
+    p->x = clamp(col, 0, TERM_COLS);
+    p->y = clamp(row, 0, TERM_ROWS);
+    p->w = clamp(w, 0, TERM_COLS - p->x);
+    p->h = clamp(h, 0, TERM_ROWS - p->y);
     ctx->overlays[ctx->n_overlays++] = p;
     ctx->layout_dirty = 1;
     return p;
@@ -1158,7 +1164,7 @@ void term_overlay_close(term_panel_t *ov) {
         return;
     }
     term_ctx_t *ctx = ov->ctx;
-    term_panel_t *back = ov->restore;
+    term_panel_t *back = ov->root.restore;
     bool give_back = back && (!ctx->focus || root_of(ctx->focus) == ov);
 
     remove_overlay(ctx, ov);
@@ -1197,20 +1203,26 @@ static void frame(term_ctx_t *ctx) {
         return;
     }
     ctx->dirty = 0;
-    for (int r = 0; r < TERM_ROWS; r++) {
-        memcpy(grid_row[r], blank_row, sizeof blank_row);
-    }
-    compose(ctx->scene);
+    render_stale(ctx->scene);
     for (int i = 0; i < ctx->n_overlays; i++) {
-        term_panel_t *ov = ctx->overlays[i];
-        if (ov->owner == ctx->scene && ov->visible) {
-            for (int r = ov->y; r < ov->y + ov->h; r++) { /* opaque */
-                memcpy(&grid_row[r][ov->x], blank_row, ov->w * sizeof(term_cell_t));
-            }
-            compose(ov);
+        if (ctx->overlays[i]->owner == ctx->scene) {
+            render_stale(ctx->overlays[i]);
         }
     }
-    flush(ctx);
+    /* Each row: the active scene, then its overlays bottom to top, each over
+     * a blanked rectangle (they are opaque). */
+    for (int r = 0; r < TERM_ROWS; r++) {
+        memcpy(row_buf, blank_row, sizeof row_buf);
+        compose_row(ctx->scene, r);
+        for (int i = 0; i < ctx->n_overlays; i++) {
+            term_panel_t *ov = ctx->overlays[i];
+            if (ov->owner == ctx->scene && ov->visible && r >= ov->y && r < ov->y + ov->h) {
+                memcpy(&row_buf[ov->x], blank_row, ov->w * sizeof(term_cell_t));
+                compose_row(ov, r);
+            }
+        }
+        flush_row(ctx, r);
+    }
 }
 
 term_ctx_t *term_init(void) {
@@ -1222,8 +1234,6 @@ term_ctx_t *term_init(void) {
         blank_row[c] = blank_cell;
     }
     for (int r = 0; r < TERM_ROWS; r++) {
-        grid_row[r] = grid[r];
-        memcpy(grid[r], blank_row, sizeof blank_row);
         memcpy(shown[r], blank_row, sizeof blank_row); /* matches the cleared screen */
     }
 

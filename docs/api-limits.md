@@ -6,7 +6,7 @@
 
 | Name | Description |
 |------|-------------|
-| [`TERM_MAX_PANELS`](#term_max_panels)  | Panels available, including the root. |
+| [`TERM_MAX_PANELS`](#term_max_panels)  | Panels available, including the root and every scene and overlay. |
 | [`TERM_INPUT_MAX`](#term_input_max)  | Longest text an input widget can hold. |
 
 ---
@@ -17,9 +17,11 @@
 #define TERM_MAX_PANELS 32
 ```
 
-Defined in src/titrm.h:60
+Defined in src/titrm.h:67
 
-Panels available, including the root.
+Panels available, including the root and every scene and overlay.
+
+Each costs about 80 bytes of RAM whether used or not. Programs with few panels can lower it by defining it when building titrmlib, e.g. `CFLAGS += -DTERM_MAX_PANELS=12`.
 
 ---
 
@@ -29,7 +31,7 @@ Panels available, including the root.
 #define TERM_INPUT_MAX 48
 ```
 
-Defined in src/titrm.h:63
+Defined in src/titrm.h:71
 
 Longest text an input widget can hold.
 

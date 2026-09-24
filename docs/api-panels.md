@@ -27,7 +27,7 @@ Splitting the screen into panels and sizing them.
 #define TERM_FIXED(cells) ((term_size_t){TERM_SIZE_FIXED, (cells)})
 ```
 
-Defined in src/titrm.h:309
+Defined in src/titrm.h:317
 
 Exactly `cells` cells.
 
@@ -39,7 +39,7 @@ Exactly `cells` cells.
 #define TERM_PERCENT(pct) ((term_size_t){TERM_SIZE_PERCENT, (pct)})
 ```
 
-Defined in src/titrm.h:311
+Defined in src/titrm.h:319
 
 `pct` percent of the parent.
 
@@ -51,7 +51,7 @@ Defined in src/titrm.h:311
 #define TERM_FILL ((term_size_t){TERM_SIZE_FILL, 1})
 ```
 
-Defined in src/titrm.h:313
+Defined in src/titrm.h:321
 
 An equal share of the space left after fixed and percent siblings.
 
@@ -63,7 +63,7 @@ An equal share of the space left after fixed and percent siblings.
 #define TERM_FILL_WEIGHT(w) ((term_size_t){TERM_SIZE_FILL, (w)})
 ```
 
-Defined in src/titrm.h:315
+Defined in src/titrm.h:323
 
 A share of the space left, weighted by `w` against other fill siblings.
 
@@ -82,7 +82,7 @@ A share of the space left, weighted by `w` against other fill siblings.
 enum term_dir_t
 ```
 
-Defined in src/titrm.h:294
+Defined in src/titrm.h:302
 
 How a panel lays out its children.
 
@@ -99,7 +99,7 @@ How a panel lays out its children.
 enum term_size_kind
 ```
 
-Defined in src/titrm.h:306
+Defined in src/titrm.h:314
 
 Values of [term_size_t.kind](#kind).
 
@@ -130,7 +130,7 @@ Values of [term_size_t.kind](#kind).
 term_panel_t * term_root(term_ctx_t * ctx)
 ```
 
-Defined in src/titrm.h:318
+Defined in src/titrm.h:326
 
 The first scene's root panel, created by [term_init()](api-lifecycle.md#term_init). It covers the whole grid.
 
@@ -142,7 +142,7 @@ The first scene's root panel, created by [term_init()](api-lifecycle.md#term_ini
 term_panel_t * term_split(term_panel_t * parent, term_dir_t dir, term_size_t size)
 ```
 
-Defined in src/titrm.h:330
+Defined in src/titrm.h:338
 
 Adds a child to `parent` and returns it.
 
@@ -156,7 +156,7 @@ The first split makes `parent` a container that lays its children out along `dir
 void term_panel_destroy(term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:338
+Defined in src/titrm.h:346
 
 Removes a panel and everything below it. Panel handles become invalid.
 
@@ -170,7 +170,7 @@ A scene that isn't active can be removed this way, with its overlays; the active
 void term_panel_show(term_panel_t * panel, bool visible)
 ```
 
-Defined in src/titrm.h:341
+Defined in src/titrm.h:349
 
 Shows or hides a panel. Hidden panels take no space; siblings reflow. Takes effect next frame.
 
@@ -182,7 +182,7 @@ Shows or hides a panel. Hidden panels take no space; siblings reflow. Takes effe
 bool term_panel_visible(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:344
+Defined in src/titrm.h:352
 
 Whether the panel is shown (see [term_panel_show()](#term_panel_show)).
 
@@ -194,7 +194,7 @@ Whether the panel is shown (see [term_panel_show()](#term_panel_show)).
 void term_panel_set_border(term_panel_t * panel, bool border)
 ```
 
-Defined in src/titrm.h:347
+Defined in src/titrm.h:355
 
 Draws a box around the panel; its content area shrinks by one cell.
 
@@ -206,7 +206,7 @@ Draws a box around the panel; its content area shrinks by one cell.
 void term_panel_set_title(term_panel_t * panel, const char * title)
 ```
 
-Defined in src/titrm.h:350
+Defined in src/titrm.h:358
 
 Sets a title into the top edge of the border. May be NULL; must outlive the panel.
 
@@ -218,7 +218,7 @@ Sets a title into the top edge of the border. May be NULL; must outlive the pane
 int term_panel_width(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:353
+Defined in src/titrm.h:361
 
 Content width in cells (inside the border).
 
@@ -230,7 +230,7 @@ Content width in cells (inside the border).
 int term_panel_height(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:356
+Defined in src/titrm.h:364
 
 Content height in cells (inside the border).
 
@@ -249,7 +249,7 @@ Content height in cells (inside the border).
 struct term_size_t
 ```
 
-Defined in src/titrm.h:300
+Defined in src/titrm.h:308
 
 A panel's size within its parent. Build one with TERM_FIXED, TERM_PERCENT, TERM_FILL or TERM_FILL_WEIGHT.
 
@@ -268,7 +268,7 @@ A panel's size within its parent. Build one with TERM_FIXED, TERM_PERCENT, TERM_
 uint8_t kind
 ```
 
-Defined in src/titrm.h:301
+Defined in src/titrm.h:309
 
 TERM_SIZE_FIXED, TERM_SIZE_PERCENT or TERM_SIZE_FILL
 
@@ -280,7 +280,7 @@ TERM_SIZE_FIXED, TERM_SIZE_PERCENT or TERM_SIZE_FILL
 uint8_t value
 ```
 
-Defined in src/titrm.h:302
+Defined in src/titrm.h:310
 
 cells, percent or fill weight
 

@@ -184,11 +184,12 @@ is in [`src/FONT.md`](src/FONT.md).
 
 ## Limits
 
-- One built-in font, and one attribute (`TERM_ATTR_REVERSE`) besides colors.
+- One built-in font.
 - Screens using many color pairs at once draw more slowly: the pixel tables for
   the six most recent pairs are cached.
-- Up to `TERM_MAX_PANELS` (32) panels, and `TERM_INPUT_MAX` (48) characters in
-  an input field.
+- Up to `TERM_MAX_PANELS` panels, and `TERM_INPUT_MAX` (48) characters in an
+  input field. The pool holds 32 panels by default, at about 80 bytes of RAM
+  each; build with e.g. `-DTERM_MAX_PANELS=12` to make it smaller.
 - `TERM_LINE_GAP` 0 gives 34 rows instead of 30, but capitals and digits then
   touch the line above.
 

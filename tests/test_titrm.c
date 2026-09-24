@@ -4,8 +4,8 @@
  * headers in tests/stubs/: drawing goes to an in-memory framebuffer and the
  * keypad plays back a scripted list of scan codes, so layout, clipping,
  * focus, widgets and the run loop can all be exercised without a calculator
- * or emulator. titrm.c is included directly so the tests can read the cell
- * grid it composes each frame.
+ * or emulator. titrm.c is included directly so the tests can read the cells
+ * on screen (`shown`) after each frame.
  *
  *     make -C tests
  */
@@ -75,9 +75,9 @@ static void draw(term_ctx_t *ctx) {
     frame(ctx);
 }
 
-static uint8_t ch_at(int col, int row) { return grid[row][col].ch; }
+static uint8_t ch_at(int col, int row) { return shown[row][col].ch; }
 static uint8_t attr_at(int col, int row) {
-    return grid[row][col].bg == TERM_FG ? TERM_ATTR_REVERSE : TERM_ATTR_NORMAL;
+    return shown[row][col].bg == TERM_FG ? TERM_ATTR_REVERSE : TERM_ATTR_NORMAL;
 }
 
 /* `len` cells of a grid row as a string; empty cells read as spaces. */
@@ -85,7 +85,7 @@ static const char *text_at(int col, int row, int len) {
     static char buf[TERM_COLS + 1];
     int i;
     for (i = 0; i < len && col + i < TERM_COLS; i++) {
-        uint8_t ch = grid[row][col + i].ch;
+        uint8_t ch = shown[row][col + i].ch;
         buf[i] = ch ? (char)ch : ' ';
     }
     buf[i] = '\0';
@@ -94,7 +94,7 @@ static const char *text_at(int col, int row, int len) {
 
 static bool row_blank(int row, int from, int to) {
     for (int c = from; c < to; c++) {
-        if (grid[row][c].ch) {
+        if (shown[row][c].ch) {
             return false;
         }
     }
@@ -148,6 +148,9 @@ static void test_grid_size(void) {
     CHECK_EQ(term_rows(), 30);
     CHECK(TERM_COLS * TERM_CELL_W <= TERM_SCREEN_W);
     CHECK(TERM_ROWS * TERM_CELL_H <= TERM_SCREEN_H);
+    /* Every panel pays for the largest widget's state: keep buffers out of it. */
+    term_panel_t *p = NULL;
+    CHECK(sizeof p->u.input <= sizeof p->u.text);
 }
 
 static bool glyph_empty(uint8_t code) {
@@ -487,9 +490,9 @@ static void test_styles(void) {
     term_panel_putc(p, (char)TERM_CH_HLINE);
     draw(ctx);
 
-    CHECK_EQ(grid[0][1].style, TERM_ATTR_BOLD);
-    CHECK_EQ(grid[0][6].style, TERM_ATTR_UNDERLINE); /* reverse is in the colors */
-    CHECK_EQ(grid[0][6].bg, TERM_FG);
+    CHECK_EQ(shown[0][1].style, TERM_ATTR_BOLD);
+    CHECK_EQ(shown[0][6].style, TERM_ATTR_UNDERLINE); /* reverse is in the colors */
+    CHECK_EQ(shown[0][6].bg, TERM_FG);
     for (int r = 0; r < TERM_CELL_H; r++) {
         uint8_t a = r < TERM_GLYPH_H ? (uint8_t)(term_font['A'].rows[r] << 1) : 0;
         uint8_t slanted = r < 3 ? a >> 1 : a;
@@ -517,7 +520,7 @@ static void test_styles(void) {
     CHECK_EQ(row_mask(0, 0, TERM_CELL_H - 1), 0x3F);
 }
 
-static uint8_t style_at(int col, int row) { return grid[row][col].style; }
+static uint8_t style_at(int col, int row) { return shown[row][col].style; }
 
 static void test_inline_styles_print(void) {
     term_ctx_t *ctx = setup();
@@ -672,7 +675,7 @@ static void test_output_is_retained(void) {
 
     /* Nothing changed: the next frame composes nothing, so even a scribble on
      * the grid survives it. */
-    grid[5][5].ch = 'Z';
+    shown[5][5].ch = 'Z';
     draw(ctx);
     CHECK_EQ(ch_at(5, 5), 'Z');
     CHECK_STR(text_at(0, 0, 4), "kept");
@@ -1270,20 +1273,20 @@ static void test_colors(void) {
     term_panel_print(b, "C");
     draw(ctx);
 
-    term_cell_t c = grid[1][1]; /* "A" */
+    term_cell_t c = shown[1][1]; /* "A" */
     CHECK_EQ(c.ch, 'A');
     CHECK_EQ(c.fg, TERM_COLOR_YELLOW);
     CHECK_EQ(c.bg, TERM_COLOR_BLUE);
-    CHECK_EQ(grid[1][2].fg, TERM_COLOR_BLUE); /* reversed: swapped */
-    CHECK_EQ(grid[1][2].bg, TERM_COLOR_YELLOW);
-    CHECK_EQ(grid[1][3].bg, TERM_COLOR_BLUE); /* a blank cell of "a" */
-    CHECK_EQ(grid[2][1].fg, TERM_COLOR_RED);  /* "C" */
-    CHECK_EQ(grid[2][1].bg, TERM_COLOR_WHITE);
-    CHECK_EQ(grid[0][0].fg, TERM_COLOR_YELLOW); /* border */
-    CHECK_EQ(grid[0][0].bg, TERM_COLOR_BLUE);
-    CHECK_EQ(grid[0][2].bg, TERM_COLOR_BLUE); /* title, not focused: normal */
-    CHECK_EQ(grid[4][5].bg, TERM_COLOR_BLUE);   /* the box's own area, under its children */
-    CHECK_EQ(grid[6][0].bg, TERM_COLOR_BLACK);  /* outside it */
+    CHECK_EQ(shown[1][2].fg, TERM_COLOR_BLUE); /* reversed: swapped */
+    CHECK_EQ(shown[1][2].bg, TERM_COLOR_YELLOW);
+    CHECK_EQ(shown[1][3].bg, TERM_COLOR_BLUE); /* a blank cell of "a" */
+    CHECK_EQ(shown[2][1].fg, TERM_COLOR_RED);  /* "C" */
+    CHECK_EQ(shown[2][1].bg, TERM_COLOR_WHITE);
+    CHECK_EQ(shown[0][0].fg, TERM_COLOR_YELLOW); /* border */
+    CHECK_EQ(shown[0][0].bg, TERM_COLOR_BLUE);
+    CHECK_EQ(shown[0][2].bg, TERM_COLOR_BLUE); /* title, not focused: normal */
+    CHECK_EQ(shown[4][5].bg, TERM_COLOR_BLUE);   /* the box's own area, under its children */
+    CHECK_EQ(shown[6][0].bg, TERM_COLOR_BLACK);  /* outside it */
 
     /* Pixels: foreground where the glyph is set, background elsewhere. */
     for (int r = 0; r < TERM_CELL_H; r++) {
@@ -1300,9 +1303,9 @@ static void test_colors(void) {
     term_panel_clear(a);
     term_make_button(b, "OK");
     draw(ctx);
-    CHECK_EQ(grid[1][1].bg, TERM_COLOR_GREEN);
-    CHECK_EQ(grid[2][1].bg, TERM_COLOR_RED); /* a button is reversed */
-    CHECK_EQ(grid[2][1].fg, TERM_COLOR_WHITE);
+    CHECK_EQ(shown[1][1].bg, TERM_COLOR_GREEN);
+    CHECK_EQ(shown[2][1].bg, TERM_COLOR_RED); /* a button is reversed */
+    CHECK_EQ(shown[2][1].fg, TERM_COLOR_WHITE);
 }
 
 static void test_focus_attr(void) {
