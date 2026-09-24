@@ -6,13 +6,25 @@
 
 #include <stdarg.h>
 
-/* One character cell: glyph code and palette colors. Panels keep their own
- * cells (retained output); each frame they are composed into the screen grid. */
+/* One character cell: glyph code, palette colors and style (TERM_ATTR_* bits
+ * other than REVERSE, which is resolved into the colors). Panels keep their
+ * own cells (retained output); each frame they are composed into the screen
+ * grid. */
 typedef struct {
     uint8_t ch;
     uint8_t fg;
     uint8_t bg;
+    uint8_t style;
 } term_cell_t;
+
+#define TERM_STYLES (TERM_ATTR_BOLD | TERM_ATTR_ITALIC | TERM_ATTR_UNDERLINE | TERM_ATTR_STRIKE)
+
+/* Inline styles: TERM_ESC then 0x40 | attribute bits (see TERM_S_*). */
+#define TERM_ESC 0x1B
+#define TERM_IS_ESC_ARG(c) (((c) & 0xE0) == 0x40)
+
+/* Tab stops, every TERM_TAB columns (a power of two). */
+#define TERM_TAB 4
 
 typedef enum {
     TERM_KIND_PLAIN,
@@ -65,6 +77,7 @@ struct term_panel {
      * Widgets draw in `attr`, and show focus with `focus_attr`. */
     uint8_t cur_x, cur_y;
     uint8_t attr;
+    uint8_t esc; /* the last character printed was TERM_ESC */
     uint8_t focus_attr;
     uint8_t fg, bg; /* palette indices */
     uint8_t align;  /* term_align_t, for text */

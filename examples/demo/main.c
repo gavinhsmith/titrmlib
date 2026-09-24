@@ -76,7 +76,7 @@ static void show_title(term_ctx_t *ctx, demo_t *d) {
     term_panel_clear(p);
 
     term_panel_move(p, 1, 0);
-    term_panel_print(p, "titrmlib demo");
+    term_panel_print(p, TERM_S_BOLD "titrmlib" TERM_S_NORMAL " demo");
 
     if (d->connecting >= 0) {
         term_panel_move(p, term_panel_width(p) - 12, 0);
@@ -93,12 +93,14 @@ static void show_title(term_ctx_t *ctx, demo_t *d) {
 static void show_details(demo_t *d) {
     const network_t *n = &networks[term_list_selected(d->list)];
     int i = term_list_selected(d->list);
-    char text[128];
+    char text[160];
 
-    snprintf(text, sizeof text, "SSID:     %s\nSignal:   %c\nSecurity: %s\nStatus:   %s", n->ssid,
+    /* Inline styles: the SSID in bold, the status styled by state. */
+    snprintf(text, sizeof text,
+             "SSID:     " TERM_S_BOLD "%s\nSignal:   %c\nSecurity: %s\nStatus:   %s", n->ssid,
              TERM_CH_SIG0 + n->signal, n->security,
-             i == d->connected    ? "connected"
-             : i == d->connecting ? "connecting..."
+             i == d->connected    ? TERM_S_BOLD "connected"
+             : i == d->connecting ? TERM_S_ITALIC "connecting..."
                                   : "idle");
     term_text_set(d->details, text);
 }
@@ -109,7 +111,7 @@ static void start_connecting(demo_t *d, int index) {
     d->connecting = index;
     d->step = 0;
     term_progress_set(d->progress, 0);
-    term_text_appendf(d->log, "Connecting: %s\n", networks[index].ssid);
+    term_text_appendf(d->log, TERM_S_ITALIC "Connecting:" TERM_S_NORMAL " %s\n", networks[index].ssid);
 }
 
 /* Secured networks ask for a password first, in a dialog over the screen. */
@@ -178,7 +180,7 @@ static void run_command(term_ctx_t *ctx, demo_t *d, const char *cmd) {
     } else if (equals_nocase(cmd, "quit")) {
         term_quit(ctx, 0);
     } else if (*cmd) {
-        term_text_append(d->log, "?? try: help\n");
+        term_text_append(d->log, "?? try: " TERM_S_BOLD "help\n");
     }
 }
 
@@ -244,8 +246,8 @@ static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
     } else {
         switch (ev->type) {
         case TERM_EV_START:
-            term_text_append(d->log, "Welcome to titrmlib!\n");
-            term_text_append(d->log, "[enter] to connect\n");
+            term_text_append(d->log, "Welcome to " TERM_S_BOLD "titrmlib" TERM_S_NORMAL "!\n");
+            term_text_append(d->log, TERM_S_BOLD "[enter]" TERM_S_NORMAL " to connect\n");
             break;
 
         case TERM_EV_TICK:
@@ -256,7 +258,7 @@ static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
                 if (d->step >= CONNECT_STEPS) {
                     d->connected = d->connecting;
                     d->connecting = -1;
-                    term_text_appendf(d->log, "Connected to %s\n", networks[d->connected].ssid);
+                    term_text_appendf(d->log, "Connected to " TERM_S_BOLD "%s\n", networks[d->connected].ssid);
                 }
             }
             break;
@@ -312,20 +314,23 @@ static void build_help(demo_t *d) {
     term_panel_t *box = term_split(d->help, TERM_VERTICAL, TERM_FILL);
     term_panel_set_border(box, true);
     term_panel_set_title(box, "Help");
+    /* Headings underlined, keys in bold; a tab lines up the descriptions. */
+#define KEY(k) "  " TERM_S_BOLD k TERM_S_NORMAL "\t"
     term_make_text(box,
-                   "Keys\n"
-                   "  up/down   pick a network\n"
-                   "  [enter]   connect (password if secured)\n"
-                   "  [vars]    move focus (arrows too, in the dialog)\n"
-                   "  [y=]      show or hide the details\n"
-                   "  [window]  clear the log\n"
-                   "  [alpha]   type letters in the command box\n"
-                   "  [mode]    this help\n"
-                   "  [clear]   quit\n"
+                   TERM_S_UNDERLINE "Keys\n"
+                   KEY("up/down") "pick a network\n"
+                   KEY("[enter]") "connect (password if secured)\n"
+                   KEY("[vars]") "move focus (arrows too, in the dialog)\n"
+                   KEY("[y=]") "\tshow or hide the details\n"
+                   KEY("[window]") "clear the log\n"
+                   KEY("[alpha]") "type letters in the command box\n"
+                   KEY("[mode]") "this help\n"
+                   KEY("[clear]") "quit\n"
                    "\n"
-                   "Commands: help, clear, info, quit\n"
+                   TERM_S_UNDERLINE "Commands" TERM_S_NORMAL ": help, clear, info, quit\n"
                    "\n"
-                   "[mode] or [clear] goes back.");
+                   TERM_S_BOLD "[mode]" TERM_S_NORMAL " or " TERM_S_BOLD "[clear]" TERM_S_NORMAL " goes back.");
+#undef KEY
 }
 
 int main(void) {
@@ -377,7 +382,8 @@ int main(void) {
     term_panel_set_title(d.input, "Command");
 
     term_make_progress(d.progress, 100);
-    term_make_text(hints, " [vars]focus [y=]info [mode]help");
+    term_make_text(hints, " " TERM_S_BOLD "[vars]" TERM_S_NORMAL "focus " TERM_S_BOLD "[y=]" TERM_S_NORMAL
+                          "info " TERM_S_BOLD "[mode]" TERM_S_NORMAL "help");
 
     term_set_tick(ctx, 100);
     term_focus(ctx, d.list);

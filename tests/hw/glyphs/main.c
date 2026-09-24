@@ -21,8 +21,8 @@ static void print_table(term_panel_t *p) {
         term_panel_printf(p, "%Xx ", hi);
         for (int lo = 0; lo < 16; lo++) {
             char c = (char)(hi << 4 | lo);
-            /* putc treats these two as line control, not glyphs */
-            term_panel_putc(p, (c == '\n' || c == '\r') ? ' ' : c);
+            /* putc treats these as control codes, not glyphs */
+            term_panel_putc(p, (c == '\t' || c == '\n' || c == '\r' || c == '\x1b') ? ' ' : c);
             term_panel_putc(p, ' ');
         }
     }

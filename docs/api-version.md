@@ -13,7 +13,7 @@
 ### TITRM_VERSION
 
 ```cpp
-#define TITRM_VERSION "0.3.0"
+#define TITRM_VERSION "0.4.0"
 ```
 
 Defined in src/titrm.h:36

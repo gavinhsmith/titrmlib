@@ -33,7 +33,7 @@ extern "C" {
  */
 
 /** @brief titrmlib's version, matching the release tag without the "v" (e.g. "1.0.0"). */
-#define TITRM_VERSION "0.3.0"
+#define TITRM_VERSION "0.4.0"
 
 /** @} */
 
@@ -81,6 +81,36 @@ int term_rows(void);
 
 /** @brief Cell attribute for term_panel_set_attr(): the panel's colors swapped. */
 #define TERM_ATTR_REVERSE 1
+
+/** @brief Cell attribute: bold, each glyph thickened one pixel to the right. */
+#define TERM_ATTR_BOLD 2
+
+/** @brief Cell attribute: italic, the top of each glyph slanted one pixel right. */
+#define TERM_ATTR_ITALIC 4
+
+/** @brief Cell attribute: underlined, joining across cells. */
+#define TERM_ATTR_UNDERLINE 8
+
+/** @brief Cell attribute: struck through, joining across cells. */
+#define TERM_ATTR_STRIKE 16
+
+/**
+ * @brief Inline style: back to normal, from here on in a string.
+ *
+ * The TERM_S_* inline styles are ESC (0x1B) followed by 0x40 | TERM_ATTR_*
+ * bits, so other combinations can be written the same way, e.g. `"\x1b" "J"`
+ * for bold and underlined. They take no space. Printed with
+ * term_panel_print() and friends, they set the panel's attribute; in a text
+ * widget, list item or label they add to the widget's attribute until the
+ * next one or the end of the line. An ESC not followed by 0x40-0x5F is
+ * dropped.
+ */
+#define TERM_S_NORMAL    "\x1b" "@"
+#define TERM_S_REVERSE   "\x1b" "A" /**< Inline style: reverse video (see TERM_S_NORMAL). */
+#define TERM_S_BOLD      "\x1b" "B" /**< Inline style: bold (see TERM_S_NORMAL). */
+#define TERM_S_ITALIC    "\x1b" "D" /**< Inline style: italic (see TERM_S_NORMAL). */
+#define TERM_S_UNDERLINE "\x1b" "H" /**< Inline style: underlined (see TERM_S_NORMAL). */
+#define TERM_S_STRIKE    "\x1b" "P" /**< Inline style: struck through (see TERM_S_NORMAL). */
 
 /* Colors: indices into graphx's default palette, for
  * term_panel_set_colors(). Any other index (0-255) works too. */
@@ -372,7 +402,13 @@ term_panel_t *term_focused(const term_ctx_t *ctx);
 /** @brief Moves the panel's cursor. */
 void term_panel_move(term_panel_t *panel, int col, int row);
 
-/** @brief Sets the attribute (TERM_ATTR_*) for the text printed next. */
+/**
+ * @brief Sets the attribute for the text printed next: TERM_ATTR_NORMAL, or
+ * any of the other TERM_ATTR_* combined with `|`.
+ *
+ * Box-drawing characters and blocks (0xB3-0xDF) ignore the styles, so lines
+ * still join.
+ */
 void term_panel_set_attr(term_panel_t *panel, uint8_t attr);
 
 /**
@@ -388,7 +424,10 @@ void term_panel_set_colors(term_panel_t *panel, uint8_t fg, uint8_t bg);
 /** @brief Wrap at the right edge instead of clipping (the default). */
 void term_panel_wrap(term_panel_t *panel, bool wrap);
 
-/** @brief Prints one character. '\\n' starts a new line. */
+/**
+ * @brief Prints one character. '\\n' starts a new line, and '\\t' moves to
+ * the next tab stop (every 4 columns) without painting over what's there.
+ */
 void term_panel_putc(term_panel_t *panel, char c);
 
 /** @brief Prints a string at the cursor. */
@@ -428,9 +467,10 @@ void term_panel_clear(term_panel_t *panel);
 /**
  * @brief Text, word-wrapped to the panel. The text is copied.
  *
- * '\\n' starts a new line. If the text is taller than the panel, a focusable
- * text widget scrolls with up/down, and arrows at the right edge show that
- * more is above or below.
+ * '\\n' starts a new line, and '\\t' is spaces to the next stop (every 4
+ * columns; list items and labels too). If the text is taller than the panel,
+ * a focusable text widget scrolls with up/down, and arrows at the right edge
+ * show that more is above or below.
  */
 void term_make_text(term_panel_t *panel, const char *text);
 
