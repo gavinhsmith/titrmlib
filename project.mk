@@ -24,6 +24,7 @@ HW_NAME_scenes = TTSCENES
 HW_NAME_overlays = TTOVERLY
 HW_NAME_controls = TTCONTRL
 HW_NAME_colors = TTCOLORS
+HW_NAME_styles = TTSTYLES
 
 ifeq ($(EXAMPLE),demo)
 NAME = TITRMDEM

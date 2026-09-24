@@ -148,6 +148,7 @@ python tests/hw/run.py --help          # all options
 |---|---|
 | `canary` | Only the setup: a graphx program launches and exits. If it fails, check the ROM first |
 | `glyphs` | Every character code, reverse video, box-drawing joins, word wrap |
+| `styles` | Bold, italic, underline and strikethrough alone and combined, in color and reversed, over box drawing (unchanged), inline in a text widget, as a list's focus highlight; tab stops in panels, text and list items |
 | `layout` | Fixed, percent and weighted-fill sizes, nesting, clipping, hide/show reflow, destroying a subtree |
 | `colors` | Every `TERM_COLOR_*`, and a colored bordered box with a list, checkbox and button inheriting its colors, and focus moving between them with [vars] and the arrows |
 | `controls` | Checkboxes, a custom widget built with a key handler, and buttons: toggling, custom change events, focus markers, submitting, moving focus with [vars] and the arrows |

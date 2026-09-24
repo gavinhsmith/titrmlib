@@ -1,0 +1,50 @@
+{
+  "transfer_files": [
+    "bin/hw_styles/TTSTYLES.8xp"
+  ],
+  "target": {
+    "name": "TTSTYLES",
+    "isASM": true
+  },
+  "sequence": [
+    "action|launch",
+    "hashWait|1",
+    "key|down",
+    "hashWait|2",
+    "key|clear",
+    "hashWait|3"
+  ],
+  "hashes": {
+    "1": {
+      "description": "Every style alone and combined, in color, over box drawing, inline, tab stops, and a list focused in bold+underline",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "3A1ACE92"
+      ]
+    },
+    "2": {
+      "description": "[down] moved the bold+underline highlight to the second list item",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_8_size",
+      "expected_CRCs": [
+        "602B79EE"
+      ]
+    },
+    "3": {
+      "description": "Program exited to a cleared home screen",
+      "timeout": 5000,
+      "start": "vram_start",
+      "size": "vram_16_size",
+      "expected_CRCs": [
+        "FFAF89BA",
+        "101734A5",
+        "9DA19F44",
+        "A32840C8",
+        "349F4775"
+      ]
+    }
+  }
+}
