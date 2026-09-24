@@ -33,7 +33,7 @@ Update this section when a stage finishes or the release state changes.
   **draft** release with `titrmlib-<tag>.zip` (sources and licenses). The
   maintainer adds the changes and publishes it.
 
-**Version:** `TITRM_VERSION` is `"0.2.0"`. No tags or releases exist yet.
+**Version:** `TITRM_VERSION` is `"0.3.0"`. No tags or releases exist yet.
 
 The font and icons have been checked on a real TI-84 Plus CE.
 
