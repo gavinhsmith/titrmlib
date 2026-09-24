@@ -43,15 +43,17 @@ struct term_panel {
     term_panel_t *last_child;
     term_panel_t *next; /* next sibling */
 
-    /* Scene roots (panels with no parent) only: the scene's event handler. */
-    term_update_fn handler;
-    void *handler_state;
-
-    /* Overlay roots only: the scene they belong to, the panel that had focus
-     * when they opened, and the rectangle asked for. */
+    /* Root panels (no parent) only. An overlay has the scene it belongs to
+     * as `owner` and keeps its own rectangle in x y w h; a scene has no
+     * owner. The two use `root` differently, so they share it. */
     term_panel_t *owner;
-    term_panel_t *restore;
-    uint8_t req_x, req_y, req_w, req_h;
+    union {
+        struct {
+            term_update_fn fn;
+            void *state;
+        } handler;             /* a scene's event handler */
+        term_panel_t *restore; /* an overlay's: the panel focused when it opened */
+    } root;
 
     uint8_t in_use;
     uint8_t visible;

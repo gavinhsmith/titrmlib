@@ -326,8 +326,8 @@ static void free_subtree(term_panel_t *p) {
         p->ctx->focus_lost = 1; /* reported to the app at the next frame */
     }
     for (int i = 0; i < p->ctx->n_overlays; i++) {
-        if (p->ctx->overlays[i]->restore == p) {
-            p->ctx->overlays[i]->restore = NULL; /* nothing to give focus back to */
+        if (p->ctx->overlays[i]->root.restore == p) {
+            p->ctx->overlays[i]->root.restore = NULL; /* nothing to give focus back to */
         }
     }
     term_widget_free(p);
@@ -539,11 +539,12 @@ static void relayout(term_ctx_t *ctx) {
     for (int i = 0; i < TERM_MAX_PANELS; i++) {
         term_panel_t *p = &ctx->panels[i];
         if (p->in_use && !p->parent) {
-            bool overlay = p->owner != NULL;
-            p->x = overlay ? p->req_x : 0;
-            p->y = overlay ? p->req_y : 0;
-            p->w = overlay ? p->req_w : TERM_COLS;
-            p->h = overlay ? p->req_h : TERM_ROWS;
+            if (!p->owner) { /* overlays keep the rectangle they opened with */
+                p->x = 0;
+                p->y = 0;
+                p->w = TERM_COLS;
+                p->h = TERM_ROWS;
+            }
             layout(p);
         }
     }
@@ -1039,7 +1040,7 @@ static bool translate(term_ctx_t *ctx, uint8_t sk, term_event_t *ev) {
 /* The active scene's handler, then the global one, until one returns true. */
 static void dispatch(term_ctx_t *ctx, const term_event_t *ev) {
     term_panel_t *scene = ctx->scene;
-    if (scene->handler && scene->handler(ctx, ev, scene->handler_state)) {
+    if (scene->root.handler.fn && scene->root.handler.fn(ctx, ev, scene->root.handler.state)) {
         return;
     }
     if (ctx->update) {
@@ -1066,9 +1067,9 @@ void term_emit(term_ctx_t *ctx, term_event_type_t type, term_panel_t *panel, int
 
 /* Scene events go only to that scene's own handler. */
 static void emit_scene(term_ctx_t *ctx, term_panel_t *scene, term_event_type_t type) {
-    if (ctx->running && scene->handler) {
+    if (ctx->running && scene->root.handler.fn) {
         term_event_t ev = make_event(type, scene, 0);
-        scene->handler(ctx, &ev, scene->handler_state);
+        scene->root.handler.fn(ctx, &ev, scene->root.handler.state);
     }
 }
 
@@ -1098,8 +1099,8 @@ static void dispatch_key(term_ctx_t *ctx, const term_event_t *ev) {
 term_panel_t *term_scene_new(term_ctx_t *ctx, term_update_fn handler, void *state) {
     term_panel_t *p = alloc_panel(ctx);
     if (p) {
-        p->handler = handler;
-        p->handler_state = state;
+        p->root.handler.fn = handler;
+        p->root.handler.state = state;
         ctx->layout_dirty = 1;
     }
     return p;
@@ -1135,11 +1136,11 @@ term_panel_t *term_overlay_open(term_ctx_t *ctx, int col, int row, int w, int h)
         return NULL;
     }
     p->owner = ctx->scene;
-    p->restore = ctx->focus;
-    p->req_x = clamp(col, 0, TERM_COLS);
-    p->req_y = clamp(row, 0, TERM_ROWS);
-    p->req_w = clamp(w, 0, TERM_COLS - p->req_x);
-    p->req_h = clamp(h, 0, TERM_ROWS - p->req_y);
+    p->root.restore = ctx->focus;
+    p->x = clamp(col, 0, TERM_COLS);
+    p->y = clamp(row, 0, TERM_ROWS);
+    p->w = clamp(w, 0, TERM_COLS - p->x);
+    p->h = clamp(h, 0, TERM_ROWS - p->y);
     ctx->overlays[ctx->n_overlays++] = p;
     ctx->layout_dirty = 1;
     return p;
@@ -1163,7 +1164,7 @@ void term_overlay_close(term_panel_t *ov) {
         return;
     }
     term_ctx_t *ctx = ov->ctx;
-    term_panel_t *back = ov->restore;
+    term_panel_t *back = ov->root.restore;
     bool give_back = back && (!ctx->focus || root_of(ctx->focus) == ov);
 
     remove_overlay(ctx, ov);
