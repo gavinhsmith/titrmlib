@@ -753,32 +753,40 @@ void term_panel_wrap(term_panel_t *p, bool wrap) {
     p->wrap = wrap;
 }
 
-void term_panel_putc(term_panel_t *p, char c) {
-    ensure_layout(p->ctx);
+/* Control characters and escapes for term_panel_putc(); true if `c` was one
+ * and is used up. Out of line, so printing plain text only pays one test. */
+static __attribute__((noinline)) bool putc_control(term_panel_t *p, char c) {
     if (p->esc) {
         p->esc = 0;
         if (TERM_IS_ESC_ARG(c)) {
             p->attr = c & 0x1F;
-            return;
+            return true;
         }
     }
-    if (c == TERM_ESC) {
+    switch (c) {
+    case TERM_ESC:
         p->esc = 1;
-        return;
-    }
-    if (c == '\n') {
+        return true;
+    case '\n':
         p->cur_x = 0;
         if (p->cur_y < 255) {
             p->cur_y++;
         }
-        return;
-    }
-    if (c == '\r') {
+        return true;
+    case '\r':
         p->cur_x = 0;
-        return;
-    }
-    if (c == '\t') { /* moves to the next stop without painting */
+        return true;
+    case '\t': /* moves to the next stop without painting */
         p->cur_x = p->cur_x >= 256 - TERM_TAB ? 255 : (p->cur_x + TERM_TAB) & ~(TERM_TAB - 1);
+        return true;
+    default:
+        return false; /* a CP437 glyph */
+    }
+}
+
+void term_panel_putc(term_panel_t *p, char c) {
+    ensure_layout(p->ctx);
+    if (((uint8_t)c < ' ' || p->esc) && putc_control(p, c)) {
         return;
     }
     if (p->wrap && p->cur_x >= p->cells_w) {
