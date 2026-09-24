@@ -148,6 +148,9 @@ static void test_grid_size(void) {
     CHECK_EQ(term_rows(), 30);
     CHECK(TERM_COLS * TERM_CELL_W <= TERM_SCREEN_W);
     CHECK(TERM_ROWS * TERM_CELL_H <= TERM_SCREEN_H);
+    /* Every panel pays for the largest widget's state: keep buffers out of it. */
+    term_panel_t *p = NULL;
+    CHECK(sizeof p->u.input <= sizeof p->u.text);
 }
 
 static bool glyph_empty(uint8_t code) {

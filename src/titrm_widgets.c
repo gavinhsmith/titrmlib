@@ -512,16 +512,19 @@ static bool list_key(term_panel_t *p, const term_event_t *ev) {
 
 /* ---- Input --------------------------------------------------------------- */
 
+/* The buffer is allocated per input rather than kept in every panel. */
 void term_make_input(term_panel_t *p) {
-    begin_widget(p, TERM_KIND_INPUT, true);
+    if (begin_widget(p, TERM_KIND_INPUT, true)) {
+        p->u.input.buf = calloc(1, TERM_INPUT_MAX + 1);
+    }
 }
 
 const char *term_input_text(const term_panel_t *p) {
-    return p->kind == TERM_KIND_INPUT ? p->u.input.buf : "";
+    return p->kind == TERM_KIND_INPUT && p->u.input.buf ? p->u.input.buf : "";
 }
 
 void term_input_set(term_panel_t *p, const char *text) {
-    if (p->kind != TERM_KIND_INPUT) {
+    if (p->kind != TERM_KIND_INPUT || !p->u.input.buf) {
         return;
     }
     size_t n = strlen(text);
@@ -561,7 +564,7 @@ static void input_draw(term_panel_t *p) {
 static bool input_key(term_panel_t *p, const term_event_t *ev) {
     switch (ev->key) {
     case TERM_KEY_CHAR:
-        if (p->u.input.len < TERM_INPUT_MAX) {
+        if (p->u.input.buf && p->u.input.len < TERM_INPUT_MAX) {
             memmove(&p->u.input.buf[p->u.input.cur + 1], &p->u.input.buf[p->u.input.cur],
                     p->u.input.len - p->u.input.cur + 1);
             p->u.input.buf[p->u.input.cur++] = ev->ch;
@@ -663,5 +666,8 @@ void term_widget_free(term_panel_t *p) {
     if (is_text(p)) {
         free(p->u.text.buf);
         p->u.text.buf = NULL;
+    } else if (p->kind == TERM_KIND_INPUT) {
+        free(p->u.input.buf);
+        p->u.input.buf = NULL;
     }
 }

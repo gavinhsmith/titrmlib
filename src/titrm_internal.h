@@ -105,7 +105,7 @@ struct term_panel {
             uint16_t top;
         } list;
         struct {
-            char buf[TERM_INPUT_MAX + 1];
+            char *buf; /* TERM_INPUT_MAX + 1 bytes, owned; NULL if out of memory */
             uint8_t len;
             uint8_t cur;
             uint8_t scroll;
