@@ -6,13 +6,18 @@
 
 #include <stdarg.h>
 
-/* One character cell: glyph code and palette colors. Panels keep their own
- * cells (retained output); each frame they are composed into the screen grid. */
+/* One character cell: glyph code, palette colors and style (TERM_ATTR_* bits
+ * other than REVERSE, which is resolved into the colors). Panels keep their
+ * own cells (retained output); each frame they are composed into the screen
+ * grid. */
 typedef struct {
     uint8_t ch;
     uint8_t fg;
     uint8_t bg;
+    uint8_t style;
 } term_cell_t;
+
+#define TERM_STYLES (TERM_ATTR_BOLD | TERM_ATTR_ITALIC | TERM_ATTR_UNDERLINE | TERM_ATTR_STRIKE)
 
 typedef enum {
     TERM_KIND_PLAIN,

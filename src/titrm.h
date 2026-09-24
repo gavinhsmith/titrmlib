@@ -82,6 +82,18 @@ int term_rows(void);
 /** @brief Cell attribute for term_panel_set_attr(): the panel's colors swapped. */
 #define TERM_ATTR_REVERSE 1
 
+/** @brief Cell attribute: bold, each glyph thickened one pixel to the right. */
+#define TERM_ATTR_BOLD 2
+
+/** @brief Cell attribute: italic, the top of each glyph slanted one pixel right. */
+#define TERM_ATTR_ITALIC 4
+
+/** @brief Cell attribute: underlined, joining across cells. */
+#define TERM_ATTR_UNDERLINE 8
+
+/** @brief Cell attribute: struck through, joining across cells. */
+#define TERM_ATTR_STRIKE 16
+
 /* Colors: indices into graphx's default palette, for
  * term_panel_set_colors(). Any other index (0-255) works too. */
 #define TERM_COLOR_BLACK  0x00 /**< the default background */
@@ -372,7 +384,13 @@ term_panel_t *term_focused(const term_ctx_t *ctx);
 /** @brief Moves the panel's cursor. */
 void term_panel_move(term_panel_t *panel, int col, int row);
 
-/** @brief Sets the attribute (TERM_ATTR_*) for the text printed next. */
+/**
+ * @brief Sets the attribute for the text printed next: TERM_ATTR_NORMAL, or
+ * any of the other TERM_ATTR_* combined with `|`.
+ *
+ * Box-drawing characters and blocks (0xB3-0xDF) ignore the styles, so lines
+ * still join.
+ */
 void term_panel_set_attr(term_panel_t *panel, uint8_t attr);
 
 /**

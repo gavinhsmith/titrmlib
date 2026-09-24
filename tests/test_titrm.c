@@ -460,6 +460,63 @@ static void test_flush_only_redraws_changes(void) {
     CHECK_EQ(stub_fb[ORIGIN_Y][ORIGIN_X + 4], TERM_BG);
 }
 
+/* A cell's pixel row as a 6-bit mask, bit 5 leftmost, set where it isn't
+ * the background. */
+static uint8_t row_mask(int col, int row, int r) {
+    uint8_t m = 0;
+    for (int x = 0; x < TERM_CELL_W; x++) {
+        m = (uint8_t)(m << 1 | (stub_fb[ORIGIN_Y + row * TERM_CELL_H + r][ORIGIN_X + col * TERM_CELL_W + x] != TERM_BG));
+    }
+    return m;
+}
+
+static void test_styles(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_root(ctx);
+    const uint8_t styles[] = {TERM_ATTR_NORMAL, TERM_ATTR_BOLD, TERM_ATTR_ITALIC, TERM_ATTR_UNDERLINE,
+                              TERM_ATTR_STRIKE, TERM_ATTR_BOLD | TERM_ATTR_ITALIC};
+    for (int i = 0; i < 6; i++) {
+        term_panel_set_attr(p, styles[i]);
+        term_panel_putc(p, 'A');
+    }
+    term_panel_set_attr(p, TERM_ATTR_UNDERLINE | TERM_ATTR_REVERSE);
+    term_panel_putc(p, ' ');
+    term_panel_set_attr(p, TERM_ATTR_BOLD | TERM_ATTR_ITALIC | TERM_ATTR_UNDERLINE);
+    term_panel_putc(p, (char)TERM_CH_HLINE);
+    term_panel_set_attr(p, TERM_ATTR_NORMAL);
+    term_panel_putc(p, (char)TERM_CH_HLINE);
+    draw(ctx);
+
+    CHECK_EQ(grid[0][1].style, TERM_ATTR_BOLD);
+    CHECK_EQ(grid[0][6].style, TERM_ATTR_UNDERLINE); /* reverse is in the colors */
+    CHECK_EQ(grid[0][6].bg, TERM_FG);
+    for (int r = 0; r < TERM_CELL_H; r++) {
+        uint8_t a = r < TERM_GLYPH_H ? (uint8_t)(term_font['A'].rows[r] << 1) : 0;
+        uint8_t slanted = r < 3 ? a >> 1 : a;
+        CHECK_EQ(row_mask(0, 0, r), a);
+        CHECK_EQ(row_mask(1, 0, r), a | a >> 1);
+        CHECK_EQ(row_mask(2, 0, r), slanted);
+        CHECK_EQ(row_mask(3, 0, r), r == TERM_CELL_H - 1 ? 0x3F : a);
+        CHECK_EQ(row_mask(4, 0, r), r == 3 ? 0x3F : a);
+        CHECK_EQ(row_mask(5, 0, r), slanted | slanted >> 1);
+        /* Box drawing ignores styles, so lines still join. */
+        CHECK_EQ(row_mask(7, 0, r), row_mask(8, 0, r));
+    }
+    /* A reversed underlined space: foreground everywhere but the underline,
+     * which is drawn in the background color. */
+    for (int x = 0; x < TERM_CELL_W; x++) {
+        CHECK_EQ(stub_fb[ORIGIN_Y][ORIGIN_X + 6 * TERM_CELL_W + x], TERM_FG);
+        CHECK_EQ(stub_fb[ORIGIN_Y + TERM_CELL_H - 1][ORIGIN_X + 6 * TERM_CELL_W + x], TERM_BG);
+    }
+
+    /* Changing only the style redraws the cell. */
+    term_panel_move(p, 0, 0);
+    term_panel_set_attr(p, TERM_ATTR_UNDERLINE);
+    term_panel_putc(p, 'A');
+    draw(ctx);
+    CHECK_EQ(row_mask(0, 0, TERM_CELL_H - 1), 0x3F);
+}
+
 static void test_connected_glyphs_bridge_gaps(void) {
     term_ctx_t *ctx = setup();
     term_panel_set_border(term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(3)), true);
@@ -1505,6 +1562,7 @@ static const struct {
     TEST(test_format),
     TEST(test_border_and_title),
     TEST(test_glyph_blit),
+    TEST(test_styles),
     TEST(test_flush_only_redraws_changes),
     TEST(test_connected_glyphs_bridge_gaps),
     TEST(test_output_is_retained),

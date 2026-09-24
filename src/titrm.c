@@ -22,7 +22,7 @@ static term_cell_t *grid_row[TERM_ROWS];        /* &grid[r][0]: indexing grid co
 static term_cell_t shown[TERM_ROWS][TERM_COLS]; /* what is on the screen */
 static term_cell_t blank_row[TERM_COLS];        /* empty cells, copied to clear */
 
-static const term_cell_t blank_cell = {0, TERM_FG, TERM_BG};
+static const term_cell_t blank_cell = {0, TERM_FG, TERM_BG, 0};
 
 static term_ctx_t g_ctx;
 static bool g_open;
@@ -30,18 +30,20 @@ static bool g_open;
 int term_cols(void) { return TERM_COLS; }
 int term_rows(void) { return TERM_ROWS; }
 
-/* A cell in the panel's colors; TERM_ATTR_REVERSE swaps them. */
-static term_cell_t make_cell(const term_panel_t *p, uint8_t ch, uint8_t attr) {
-    term_cell_t c = {ch, p->fg, p->bg};
-    if (attr & TERM_ATTR_REVERSE) {
-        c.fg = p->bg;
-        c.bg = p->fg;
-    }
-    return c;
+/* Sets a cell in the panel's colors; TERM_ATTR_REVERSE swaps them. Cells are
+ * written field by field: clang builds a 4-byte struct returned by value as
+ * a 32-bit integer, with a library call per byte. */
+static inline __attribute__((always_inline)) void set_cell(term_cell_t *c, const term_panel_t *p,
+                                                        uint8_t ch, uint8_t attr) {
+    bool reverse = attr & TERM_ATTR_REVERSE;
+    c->ch = ch;
+    c->fg = reverse ? p->bg : p->fg;
+    c->bg = reverse ? p->fg : p->bg;
+    c->style = attr & TERM_STYLES;
 }
 
-static term_cell_t blank_of(const term_panel_t *p) {
-    return make_cell(p, 0, TERM_ATTR_NORMAL);
+static void set_blank(term_cell_t *c, const term_panel_t *p) {
+    set_cell(c, p, 0, TERM_ATTR_NORMAL);
 }
 
 /* ---- Key queue ----------------------------------------------------------- */
@@ -186,11 +188,20 @@ static const row_table_t *pixels_for(uint8_t fg, uint8_t bg) {
     return &row_pixels[i];
 }
 
-static void draw_cell(int col, int row, term_cell_t c) {
-    const row_table_t *pixels = pixels_for(c.fg, c.bg);
-    const term_glyph_t *g = &term_font[c.ch];
-    bool blank = (c.ch == 0 || c.ch == ' ');
-    bool connected = is_connected(c.ch);
+/* Styles, as changes to the glyph's row masks: bold smears each row one
+ * pixel right, italic shifts the top rows right, and underline and
+ * strikethrough fill a whole row, gap column included, so they join up.
+ * ponytail: STRIKE_ROW is a guess at 5x7; pick it on real hardware. */
+#define ITALIC_ROWS 3
+#define STRIKE_ROW 3
+#define FULL_ROW (ROW_MASKS - 1)
+
+static void draw_cell(int col, int row, const term_cell_t *c) {
+    const row_table_t *pixels = pixels_for(c->fg, c->bg);
+    const term_glyph_t *g = &term_font[c->ch];
+    bool blank = (c->ch == 0 || c->ch == ' ');
+    bool connected = is_connected(c->ch);
+    uint8_t style = connected ? 0 : c->style;
 
     /* Rows are copied straight into graphx's draw buffer: a graphx call per
      * run of pixels cost about 1 ms a cell. */
@@ -204,6 +215,18 @@ static void draw_cell(int col, int row, term_cell_t c) {
             mask = bits << TERM_CHAR_GAP;
             if (connected && (bits & 1)) {
                 mask |= (1 << TERM_CHAR_GAP) - 1;
+            }
+        }
+        if (style) {
+            if ((style & TERM_ATTR_ITALIC) && r < ITALIC_ROWS) {
+                mask >>= 1;
+            }
+            if (style & TERM_ATTR_BOLD) {
+                mask |= mask >> 1;
+            }
+            if (((style & TERM_ATTR_UNDERLINE) && r == TERM_CELL_H - 1) ||
+                ((style & TERM_ATTR_STRIKE) && r == STRIKE_ROW)) {
+                mask = FULL_ROW;
             }
         }
         memcpy(dst, (*pixels)[mask], TERM_CELL_W);
@@ -220,8 +243,9 @@ static void flush(term_ctx_t *ctx) {
         term_cell_t *want = grid[r];
         term_cell_t *have = shown[r];
         for (int c = 0; c < TERM_COLS; c++) {
-            if (want[c].ch != have[c].ch || want[c].fg != have[c].fg || want[c].bg != have[c].bg) {
-                draw_cell(c, r, want[c]);
+            if (want[c].ch != have[c].ch || want[c].fg != have[c].fg || want[c].bg != have[c].bg ||
+                want[c].style != have[c].style) {
+                draw_cell(c, r, &want[c]);
                 have[c] = want[c];
             }
         }
@@ -424,8 +448,11 @@ static void size_cells(term_panel_t *p) {
     for (int r = 0; r < h; r++) {
         term_cell_t *row = cells + (size_t)r * w;
         for (int c = 0; c < w; c++) {
-            row[c] = (r < p->cells_h && c < p->cells_w) ? p->cells[(size_t)r * p->cells_w + c]
-                                                        : blank_of(p);
+            if (r < p->cells_h && c < p->cells_w) {
+                row[c] = p->cells[(size_t)r * p->cells_w + c];
+            } else {
+                set_blank(&row[c], p);
+            }
         }
     }
     free(p->cells);
@@ -546,7 +573,7 @@ int term_panel_height(const term_panel_t *p) {
 
 static void put_abs(const term_panel_t *p, int col, int row, uint8_t ch, uint8_t attr) {
     if (col >= 0 && col < TERM_COLS && row >= 0 && row < TERM_ROWS) {
-        grid[row][col] = make_cell(p, ch, attr);
+        set_cell(&grid[row][col], p, ch, attr);
     }
 }
 
@@ -586,7 +613,8 @@ static void draw_border(const term_panel_t *p, bool focused) {
 
 /* Rebuilds a widget's retained cells from its state. */
 static void render_widget(term_panel_t *p) {
-    term_cell_t blank = blank_of(p);
+    term_cell_t blank;
+    set_blank(&blank, p);
     for (int i = 0; i < p->cells_w * p->cells_h; i++) {
         p->cells[i] = blank;
     }
@@ -606,7 +634,8 @@ static void compose(term_panel_t *p) {
     /* A container in a different background than its parent's fills its
      * area, so gaps between its children show its color. */
     if (p->first_child && p->bg != (p->parent ? p->parent->bg : TERM_BG)) {
-        term_cell_t blank = blank_of(p);
+        term_cell_t blank;
+        set_blank(&blank, p);
         for (int r = p->y; r < p->y + p->h; r++) {
             for (int c = p->x; c < p->x + p->w; c++) {
                 grid_row[r][c] = blank;
@@ -678,7 +707,7 @@ void term_put(term_panel_t *p, int col, int row, uint8_t ch, uint8_t attr) {
     if (col < 0 || row < 0 || col >= p->cells_w || row >= p->cells_h) {
         return;
     }
-    p->cells[(size_t)row * p->cells_w + col] = make_cell(p, ch, attr);
+    set_cell(&p->cells[(size_t)row * p->cells_w + col], p, ch, attr);
 }
 
 void term_panel_move(term_panel_t *p, int col, int row) {
@@ -745,7 +774,7 @@ void term_panel_putc(term_panel_t *p, char c) {
     }
     /* term_put(), inlined: this runs for every character printed. */
     if (p->cur_x < p->cells_w && p->cur_y < p->cells_h) {
-        p->cells[(size_t)p->cur_y * p->cells_w + p->cur_x] = make_cell(p, (uint8_t)c, p->attr);
+        set_cell(&p->cells[(size_t)p->cur_y * p->cells_w + p->cur_x], p, (uint8_t)c, p->attr);
         p->ctx->dirty = 1;
     }
     if (p->cur_x < 255) {
@@ -877,7 +906,8 @@ void term_panel_repeat(term_panel_t *p, char c, int count) {
 
 void term_panel_clear(term_panel_t *p) {
     ensure_layout(p->ctx);
-    term_cell_t blank = blank_of(p);
+    term_cell_t blank;
+    set_blank(&blank, p);
     for (int i = 0; i < p->cells_w * p->cells_h; i++) {
         p->cells[i] = blank;
     }
