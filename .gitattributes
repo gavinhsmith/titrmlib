@@ -1,0 +1,9 @@
+# Text files are stored and checked out with LF on every platform, so edits
+# on Windows don't change line endings.
+* text=auto eol=lf
+
+*.gif binary
+*.png binary
+*.bin binary
+*.8xp binary
+*.rom binary
