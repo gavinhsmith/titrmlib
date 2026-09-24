@@ -2,10 +2,9 @@
 
 ## Planned
 
-- **Phase 2:** retained panels and change-based rendering, a key queue,
-  scenes, overlays, a revised widget set and color. Built on the `phase-2`
-  branch, to be reviewed and merged. The design is in [DESIGN.md](DESIGN.md).
 - Re-record `demo.gif` with the phase 2 demo.
+- Check the CP437 glyphs (v0.3.0) on a real TI-84 Plus CE; the roughest at
+  5×7 are ½ ¼ ₧ ♫ and ▓.
 
 ## Known issues
 
