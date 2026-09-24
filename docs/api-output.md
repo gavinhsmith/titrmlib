@@ -19,6 +19,8 @@ Everything here is clipped to the panel's content area, whatever its depth in th
 | `void` | [`term_panel_putc`](#term_panel_putc)  | Prints one character. '\n' starts a new line, and '\t' moves to the next tab stop (every 4 columns) without painting over what's there. |
 | `void` | [`term_panel_print`](#term_panel_print)  | Prints a string at the cursor. |
 | `void` | [`term_panel_printf`](#term_panel_printf)  | Prints formatted text at the cursor. |
+| `int` | [`term_snprintf`](#term_snprintf)  | Formats into `buf` like snprintf(), with [term_panel_printf()](#term_panel_printf)'s formatting, for titles, list items and labels. |
+| `int` | [`term_vsnprintf`](#term_vsnprintf)  | [term_snprintf()](#term_snprintf) with a `va_list`, for your own formatting functions. |
 | `void` | [`term_panel_repeat`](#term_panel_repeat)  | Prints `c``count` times. |
 | `void` | [`term_panel_clear`](#term_panel_clear)  | Blanks the panel's content area and moves the cursor to 0,0. |
 
@@ -30,7 +32,7 @@ Everything here is clipped to the panel's content area, whatever its depth in th
 void term_panel_move(term_panel_t * panel, int col, int row)
 ```
 
-Defined in src/titrm.h:411
+Defined in src/titrm.h:412
 
 Moves the panel's cursor.
 
@@ -42,7 +44,7 @@ Moves the panel's cursor.
 void term_panel_set_attr(term_panel_t * panel, uint8_t attr)
 ```
 
-Defined in src/titrm.h:420
+Defined in src/titrm.h:421
 
 Sets the attribute for the text printed next: TERM_ATTR_NORMAL, or any of the other TERM_ATTR_* combined with `|`.
 
@@ -56,7 +58,7 @@ Box-drawing characters and blocks (0xB3-0xDF) ignore the styles, so lines still 
 void term_panel_set_colors(term_panel_t * panel, uint8_t fg, uint8_t bg)
 ```
 
-Defined in src/titrm.h:430
+Defined in src/titrm.h:431
 
 Sets the panel's colors (TERM_COLOR_*, or any palette index).
 
@@ -70,7 +72,7 @@ Like the attribute, they apply to what is printed next, and clearing fills the p
 void term_panel_wrap(term_panel_t * panel, bool wrap)
 ```
 
-Defined in src/titrm.h:433
+Defined in src/titrm.h:434
 
 Wrap at the right edge instead of clipping (the default).
 
@@ -82,7 +84,7 @@ Wrap at the right edge instead of clipping (the default).
 void term_panel_putc(term_panel_t * panel, char c)
 ```
 
-Defined in src/titrm.h:439
+Defined in src/titrm.h:440
 
 Prints one character. '\n' starts a new line, and '\t' moves to the next tab stop (every 4 columns) without painting over what's there.
 
@@ -94,7 +96,7 @@ Prints one character. '\n' starts a new line, and '\t' moves to the next tab sto
 void term_panel_print(term_panel_t * panel, const char * str)
 ```
 
-Defined in src/titrm.h:442
+Defined in src/titrm.h:443
 
 Prints a string at the cursor.
 
@@ -106,11 +108,37 @@ Prints a string at the cursor.
 void term_panel_printf(term_panel_t * panel, const char * fmt, ...)
 ```
 
-Defined in src/titrm.h:452
+Defined in src/titrm.h:453
 
 Prints formatted text at the cursor.
 
 A small printf of titrmlib's own, so programs don't link the toolchain's (about 7 KB). It supports `d u x X c s %%`, the `l` modifier and a width with the `-` and `0` flags, e.g. `%-10s`, `%05ld`, `%02X`. Other specifiers (floats, precision, `p`) are printed as written.
+
+---
+
+### term_snprintf
+
+```cpp
+int term_snprintf(char * buf, size_t size, const char * fmt, ...)
+```
+
+Defined in src/titrm.h:464
+
+Formats into `buf` like snprintf(), with [term_panel_printf()](#term_panel_printf)'s formatting, for titles, list items and labels.
+
+Writes at most `size - 1` characters and a terminator (nothing if `size` is 0, when `buf` may be NULL). Returns the length the whole text would have, so a result of `size` or more means it was cut short. Use it instead of snprintf(), which links the toolchain's printf.
+
+---
+
+### term_vsnprintf
+
+```cpp
+int term_vsnprintf(char * buf, size_t size, const char * fmt, va_list args)
+```
+
+Defined in src/titrm.h:467
+
+[term_snprintf()](#term_snprintf) with a `va_list`, for your own formatting functions.
 
 ---
 
@@ -120,7 +148,7 @@ A small printf of titrmlib's own, so programs don't link the toolchain's (about 
 void term_panel_repeat(term_panel_t * panel, char c, int count)
 ```
 
-Defined in src/titrm.h:455
+Defined in src/titrm.h:470
 
 Prints `c``count` times.
 
@@ -132,7 +160,7 @@ Prints `c``count` times.
 void term_panel_clear(term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:458
+Defined in src/titrm.h:473
 
 Blanks the panel's content area and moves the cursor to 0,0.
 

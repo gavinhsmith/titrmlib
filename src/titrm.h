@@ -34,7 +34,7 @@ extern "C" {
  */
 
 /** @brief titrmlib's version, matching the release tag without the "v" (e.g. "1.0.0"). */
-#define TITRM_VERSION "0.4.1"
+#define TITRM_VERSION "0.4.2"
 
 /** @} */
 

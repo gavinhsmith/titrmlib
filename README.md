@@ -99,6 +99,12 @@ state changes, typically in the update function; only the cells that changed
 are redrawn. Output is clipped to the panel's content area, and only panels
 without children hold content.
 
+**Formatting.** `term_panel_printf` and `term_text_appendf` format with
+titrmlib's own small printf (`%d %u %x %X %c %s %%`, `l`, widths). For
+strings that titles, list items and labels take, format with
+`term_snprintf(buf, size, fmt, ...)`. Calling the C library's `printf`
+family links the toolchain's version, about 8 KB more.
+
 **Color.** `term_panel_set_colors(panel, fg, bg)` takes palette indices:
 `TERM_COLOR_*` names common ones in graphx's default palette, and any index
 from 0 to 255 works. Like the attribute, colors apply to what is printed next

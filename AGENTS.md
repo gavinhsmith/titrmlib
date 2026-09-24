@@ -33,9 +33,9 @@ Update this section when a stage finishes or the release state changes.
   **draft** release with `titrmlib-<tag>.zip` (sources and licenses). The
   maintainer adds the changes and publishes it.
 
-**Version:** `TITRM_VERSION` is `"0.4.1"`. v0.1.0 through v0.4.1 are
-released; v0.3.0 added code page 437, v0.4.0 the formatting and v0.4.1
-smaller memory use.
+**Version:** `TITRM_VERSION` is `"0.4.2"` (`term_snprintf`), not yet tagged.
+v0.1.0 through v0.4.1 are released; v0.3.0 added code page 437, v0.4.0 the
+formatting and v0.4.1 smaller memory use.
 
 The ASCII glyphs have been checked on a real TI-84 Plus CE; the CP437 glyphs
 added in v0.3.0 and the styles added in v0.4.0 have only been checked in CEmu.
@@ -160,6 +160,9 @@ Code that is cheap on a desktop can be slow here:
   them as a 32-bit integer with `__lshl`/`__ladd` calls per byte. Write the
   fields through a pointer (`set_cell`).
 - Check the generated assembly in `obj/<program>/lto.s` when a hot path is slow.
+- Programs shouldn't call the C library's `printf` family: it links
+  nanoprintf (~8 KB). Use `term_panel_printf`, `term_text_appendf` and
+  `term_snprintf`, which share `term_vformat`.
 - RAM is tight, and programs run from RAM too. Static RAM is mostly `shown`
   (6.4 KB), the panel pool (~83 bytes per panel, `TERM_MAX_PANELS`) and the
   pixel tables (2.3 KB); widget buffers are on the heap. Don't add another

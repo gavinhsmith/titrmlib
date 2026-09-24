@@ -19,7 +19,7 @@ Opaque handles passed to every call.
 using term_ctx_t = struct term_ctx
 ```
 
-Defined in src/titrm.h:47
+Defined in src/titrm.h:48
 
 The framework context. There is only one; see [term_init()](api-lifecycle.md#term_init).
 
@@ -31,7 +31,7 @@ The framework context. There is only one; see [term_init()](api-lifecycle.md#ter
 using term_panel_t = struct term_panel
 ```
 
-Defined in src/titrm.h:50
+Defined in src/titrm.h:51
 
 A panel in the tree. Handles stay valid until the panel is destroyed.
 

@@ -38,7 +38,7 @@ The character grid and cell attributes.
 #define TERM_ATTR_NORMAL 0
 ```
 
-Defined in src/titrm.h:88
+Defined in src/titrm.h:89
 
 Cell attribute for [term_panel_set_attr()](api-output.md#term_panel_set_attr): normal video.
 
@@ -50,7 +50,7 @@ Cell attribute for [term_panel_set_attr()](api-output.md#term_panel_set_attr): n
 #define TERM_ATTR_REVERSE 1
 ```
 
-Defined in src/titrm.h:91
+Defined in src/titrm.h:92
 
 Cell attribute for [term_panel_set_attr()](api-output.md#term_panel_set_attr): the panel's colors swapped.
 
@@ -62,7 +62,7 @@ Cell attribute for [term_panel_set_attr()](api-output.md#term_panel_set_attr): t
 #define TERM_ATTR_BOLD 2
 ```
 
-Defined in src/titrm.h:94
+Defined in src/titrm.h:95
 
 Cell attribute: bold, each glyph thickened one pixel to the right.
 
@@ -74,7 +74,7 @@ Cell attribute: bold, each glyph thickened one pixel to the right.
 #define TERM_ATTR_ITALIC 4
 ```
 
-Defined in src/titrm.h:97
+Defined in src/titrm.h:98
 
 Cell attribute: italic, the top of each glyph slanted one pixel right.
 
@@ -86,7 +86,7 @@ Cell attribute: italic, the top of each glyph slanted one pixel right.
 #define TERM_ATTR_UNDERLINE 8
 ```
 
-Defined in src/titrm.h:100
+Defined in src/titrm.h:101
 
 Cell attribute: underlined, joining across cells.
 
@@ -98,7 +98,7 @@ Cell attribute: underlined, joining across cells.
 #define TERM_ATTR_STRIKE 16
 ```
 
-Defined in src/titrm.h:103
+Defined in src/titrm.h:104
 
 Cell attribute: struck through, joining across cells.
 
@@ -110,7 +110,7 @@ Cell attribute: struck through, joining across cells.
 #define TERM_S_NORMAL "\x1b" "@"
 ```
 
-Defined in src/titrm.h:116
+Defined in src/titrm.h:117
 
 Inline style: back to normal, from here on in a string.
 
@@ -124,7 +124,7 @@ The TERM_S_* inline styles are ESC (0x1B) followed by 0x40 | TERM_ATTR_* bits, s
 #define TERM_S_REVERSE "\x1b" "A"
 ```
 
-Defined in src/titrm.h:117
+Defined in src/titrm.h:118
 
 Inline style: reverse video (see TERM_S_NORMAL).
 
@@ -136,7 +136,7 @@ Inline style: reverse video (see TERM_S_NORMAL).
 #define TERM_S_BOLD "\x1b" "B"
 ```
 
-Defined in src/titrm.h:118
+Defined in src/titrm.h:119
 
 Inline style: bold (see TERM_S_NORMAL).
 
@@ -148,7 +148,7 @@ Inline style: bold (see TERM_S_NORMAL).
 #define TERM_S_ITALIC "\x1b" "D"
 ```
 
-Defined in src/titrm.h:119
+Defined in src/titrm.h:120
 
 Inline style: italic (see TERM_S_NORMAL).
 
@@ -160,7 +160,7 @@ Inline style: italic (see TERM_S_NORMAL).
 #define TERM_S_UNDERLINE "\x1b" "H"
 ```
 
-Defined in src/titrm.h:120
+Defined in src/titrm.h:121
 
 Inline style: underlined (see TERM_S_NORMAL).
 
@@ -172,7 +172,7 @@ Inline style: underlined (see TERM_S_NORMAL).
 #define TERM_S_STRIKE "\x1b" "P"
 ```
 
-Defined in src/titrm.h:121
+Defined in src/titrm.h:122
 
 Inline style: struck through (see TERM_S_NORMAL).
 
@@ -184,7 +184,7 @@ Inline style: struck through (see TERM_S_NORMAL).
 #define TERM_COLOR_BLACK 0x00
 ```
 
-Defined in src/titrm.h:125
+Defined in src/titrm.h:126
 
 the default background
 
@@ -196,7 +196,7 @@ the default background
 #define TERM_COLOR_WHITE 0xFF
 ```
 
-Defined in src/titrm.h:126
+Defined in src/titrm.h:127
 
 the default foreground
 
@@ -208,7 +208,7 @@ the default foreground
 #define TERM_COLOR_RED 0xE0
 ```
 
-Defined in src/titrm.h:127
+Defined in src/titrm.h:128
 
 red
 
@@ -220,7 +220,7 @@ red
 #define TERM_COLOR_ORANGE 0xE1
 ```
 
-Defined in src/titrm.h:128
+Defined in src/titrm.h:129
 
 orange (graphx names 0xE3, which shows as yellow)
 
@@ -232,7 +232,7 @@ orange (graphx names 0xE3, which shows as yellow)
 #define TERM_COLOR_YELLOW 0xE7
 ```
 
-Defined in src/titrm.h:129
+Defined in src/titrm.h:130
 
 yellow
 
@@ -244,7 +244,7 @@ yellow
 #define TERM_COLOR_GREEN 0x03
 ```
 
-Defined in src/titrm.h:130
+Defined in src/titrm.h:131
 
 green
 
@@ -256,7 +256,7 @@ green
 #define TERM_COLOR_BLUE 0x10
 ```
 
-Defined in src/titrm.h:131
+Defined in src/titrm.h:132
 
 blue
 
@@ -268,7 +268,7 @@ blue
 #define TERM_COLOR_PURPLE 0x50
 ```
 
-Defined in src/titrm.h:132
+Defined in src/titrm.h:133
 
 purple
 
@@ -280,7 +280,7 @@ purple
 #define TERM_COLOR_PINK 0xF0
 ```
 
-Defined in src/titrm.h:133
+Defined in src/titrm.h:134
 
 pink
 
@@ -299,7 +299,7 @@ pink
 int term_cols(void)
 ```
 
-Defined in src/titrm.h:82
+Defined in src/titrm.h:83
 
 Grid width in cells: 53 with the built-in 5x7 font (6x8 cells).
 
@@ -311,7 +311,7 @@ Grid width in cells: 53 with the built-in 5x7 font (6x8 cells).
 int term_rows(void)
 ```
 
-Defined in src/titrm.h:85
+Defined in src/titrm.h:86
 
 Grid height in cells: 30 with the built-in 5x7 font (6x8 cells).
 
