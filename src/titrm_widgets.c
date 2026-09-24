@@ -104,15 +104,6 @@ void term_text_append(term_panel_t *p, const char *text) {
     term_panel_touch(p);
 }
 
-static void out_count(void *dst, char c) {
-    (void)c;
-    ++*(size_t *)dst;
-}
-
-static void out_buf(void *dst, char c) {
-    *(*(char **)dst)++ = c;
-}
-
 void term_text_appendf(term_panel_t *p, const char *fmt, ...) {
     if (!is_text(p)) {
         return;
@@ -120,13 +111,10 @@ void term_text_appendf(term_panel_t *p, const char *fmt, ...) {
     va_list args, again;
     va_start(args, fmt);
     va_copy(again, args);
-    size_t n = 0;
-    term_vformat(out_count, &n, fmt, args);
-    char *buf = malloc(n + 1);
+    size_t n = (size_t)term_vsnprintf(NULL, 0, fmt, args) + 1;
+    char *buf = malloc(n);
     if (buf) {
-        char *end = buf;
-        term_vformat(out_buf, &end, fmt, again);
-        *end = '\0';
+        term_vsnprintf(buf, n, fmt, again);
         term_text_append(p, buf);
         free(buf);
     }

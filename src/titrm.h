@@ -17,6 +17,7 @@
 #ifndef TITRM_H
 #define TITRM_H
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -450,6 +451,20 @@ void term_panel_print(term_panel_t *panel, const char *str);
  * specifiers (floats, precision, `%p`) are printed as written.
  */
 void term_panel_printf(term_panel_t *panel, const char *fmt, ...);
+
+/**
+ * @brief Formats into `buf` like snprintf(), with term_panel_printf()'s
+ * formatting, for titles, list items and labels.
+ *
+ * Writes at most `size - 1` characters and a terminator (nothing if `size` is
+ * 0, when `buf` may be NULL). Returns the length the whole text would have,
+ * so a result of `size` or more means it was cut short. Use it instead of
+ * snprintf(), which links the toolchain's printf.
+ */
+int term_snprintf(char *buf, size_t size, const char *fmt, ...);
+
+/** @brief term_snprintf() with a `va_list`, for your own formatting functions. */
+int term_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
 
 /** @brief Prints `c` `count` times. */
 void term_panel_repeat(term_panel_t *panel, char c, int count);

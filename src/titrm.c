@@ -928,6 +928,38 @@ void term_panel_printf(term_panel_t *p, const char *fmt, ...) {
     va_end(args);
 }
 
+typedef struct {
+    char *next;  /* where the next character goes */
+    size_t room; /* bytes left, the terminator's included */
+    size_t len;  /* characters formatted, kept or not */
+} sn_out_t;
+
+static void out_buf(void *dst, char c) {
+    sn_out_t *o = dst;
+    if (o->room > 1) {
+        *o->next++ = c;
+        o->room--;
+    }
+    o->len++;
+}
+
+int term_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
+    sn_out_t o = {buf, size, 0};
+    term_vformat(out_buf, &o, fmt, args);
+    if (size) {
+        *o.next = '\0';
+    }
+    return (int)o.len;
+}
+
+int term_snprintf(char *buf, size_t size, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int n = term_vsnprintf(buf, size, fmt, args);
+    va_end(args);
+    return n;
+}
+
 void term_panel_repeat(term_panel_t *p, char c, int count) {
     while (count-- > 0) {
         term_panel_putc(p, c);
