@@ -33,9 +33,9 @@ Update this section when a stage finishes or the release state changes.
   **draft** release with `titrmlib-<tag>.zip` (sources and licenses). The
   maintainer adds the changes and publishes it.
 
-**Version:** `TITRM_VERSION` is `"0.4.2"` (`term_snprintf`), not yet tagged.
-v0.1.0 through v0.4.1 are released; v0.3.0 added code page 437, v0.4.0 the
-formatting and v0.4.1 smaller memory use.
+**Version:** `TITRM_VERSION` is `"0.4.2"`. v0.1.0 through v0.4.2 are
+released; v0.3.0 added code page 437, v0.4.0 the formatting, v0.4.1 smaller
+memory use and v0.4.2 `term_snprintf`.
 
 The ASCII glyphs have been checked on a real TI-84 Plus CE; the CP437 glyphs
 added in v0.3.0 and the styles added in v0.4.0 have only been checked in CEmu.
