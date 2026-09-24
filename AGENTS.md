@@ -43,7 +43,7 @@ added in v0.3.0 have only been checked in CEmu.
 The design and build order are in [DESIGN.md](DESIGN.md). It added retained
 panels and change-based rendering, the key queue (keypadc input), app-driven
 focus, the new events, scenes, overlays, the revised widget set with the demo
-rebuilt on it, and color. `demo.gif` still shows the stage 1 demo.
+rebuilt on it, and color.
 Breaking API changes are fine until v1.0.
 
 ## Core rules
