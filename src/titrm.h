@@ -56,8 +56,16 @@ typedef struct term_panel term_panel_t;
  * @{
  */
 
-/** @brief Panels available, including the root. */
+/**
+ * @brief Panels available, including the root and every scene and overlay.
+ *
+ * Each costs about 80 bytes of RAM whether used or not. Programs with few
+ * panels can lower it by defining it when building titrmlib, e.g.
+ * `CFLAGS += -DTERM_MAX_PANELS=12`.
+ */
+#ifndef TERM_MAX_PANELS
 #define TERM_MAX_PANELS 32
+#endif
 
 /** @brief Longest text an input widget can hold. */
 #define TERM_INPUT_MAX  48
