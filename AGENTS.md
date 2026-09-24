@@ -33,9 +33,11 @@ Update this section when a stage finishes or the release state changes.
   **draft** release with `titrmlib-<tag>.zip` (sources and licenses). The
   maintainer adds the changes and publishes it.
 
-**Version:** `TITRM_VERSION` is `"0.3.0"`. No tags or releases exist yet.
+**Version:** `TITRM_VERSION` is `"0.3.0"`. v0.1.0 and v0.2.0 are released;
+v0.3.0 (code page 437) is tagged, with its release still a draft.
 
-The font and icons have been checked on a real TI-84 Plus CE.
+The ASCII glyphs have been checked on a real TI-84 Plus CE; the CP437 glyphs
+added in v0.3.0 have only been checked in CEmu.
 
 **Phase 2: in progress on the `phase-2` branch.** The design, build order and
 progress are in [DESIGN.md](DESIGN.md). Done: retained panels and
