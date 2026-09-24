@@ -13,7 +13,6 @@
  * Type "help" in the command box for text commands (use [alpha] for letters).
  */
 
-#include <stdio.h>
 #include <string.h>
 
 #include "titrm.h"
@@ -93,16 +92,16 @@ static void show_title(term_ctx_t *ctx, demo_t *d) {
 static void show_details(demo_t *d) {
     const network_t *n = &networks[term_list_selected(d->list)];
     int i = term_list_selected(d->list);
-    char text[160];
 
-    /* Inline styles: the SSID in bold, the status styled by state. */
-    snprintf(text, sizeof text,
-             "SSID:     " TERM_S_BOLD "%s\nSignal:   %c\nSecurity: %s\nStatus:   %s", n->ssid,
-             TERM_CH_SIG0 + n->signal, n->security,
-             i == d->connected    ? TERM_S_BOLD "connected"
-             : i == d->connecting ? TERM_S_ITALIC "connecting..."
-                                  : "idle");
-    term_text_set(d->details, text);
+    /* Inline styles: the SSID in bold, the status styled by state. titrmlib's
+     * own formatting keeps the C library's printf (~8 KB) out of the program. */
+    term_text_clear(d->details);
+    term_text_appendf(d->details,
+                      "SSID:     " TERM_S_BOLD "%s\nSignal:   %c\nSecurity: %s\nStatus:   %s", n->ssid,
+                      TERM_CH_SIG0 + n->signal, n->security,
+                      i == d->connected    ? TERM_S_BOLD "connected"
+                      : i == d->connecting ? TERM_S_ITALIC "connecting..."
+                                           : "idle");
 }
 
 /* ---- Connecting ---------------------------------------------------------- */
@@ -117,7 +116,8 @@ static void start_connecting(demo_t *d, int index) {
 /* Secured networks ask for a password first, in a dialog over the screen. */
 static void open_password_dialog(term_ctx_t *ctx, demo_t *d, int index) {
     d->dialog_network = index;
-    snprintf(d->dialog_title, sizeof d->dialog_title, "Password: %s", networks[index].ssid);
+    strcpy(d->dialog_title, "Password: ");
+    strncat(d->dialog_title, networks[index].ssid, sizeof d->dialog_title - sizeof "Password: ");
 
     d->dialog = term_overlay_open_centered(ctx, 32, 6);
     term_panel_set_colors(d->dialog, TERM_COLOR_WHITE, TERM_COLOR_BLUE); /* its panels inherit */
