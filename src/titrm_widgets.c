@@ -6,7 +6,6 @@
 #include "titrm_internal.h"
 
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -80,13 +79,34 @@ void term_text_append(term_panel_t *p, const char *text) {
     term_panel_touch(p);
 }
 
+static void out_count(void *dst, char c) {
+    (void)c;
+    ++*(size_t *)dst;
+}
+
+static void out_buf(void *dst, char c) {
+    *(*(char **)dst)++ = c;
+}
+
 void term_text_appendf(term_panel_t *p, const char *fmt, ...) {
-    char buf[TERM_COLS * 2 + 1];
-    va_list args;
+    if (!is_text(p)) {
+        return;
+    }
+    va_list args, again;
     va_start(args, fmt);
-    vsnprintf(buf, sizeof buf, fmt, args);
+    va_copy(again, args);
+    size_t n = 0;
+    term_vformat(out_count, &n, fmt, args);
+    char *buf = malloc(n + 1);
+    if (buf) {
+        char *end = buf;
+        term_vformat(out_buf, &end, fmt, again);
+        *end = '\0';
+        term_text_append(p, buf);
+        free(buf);
+    }
+    va_end(again);
     va_end(args);
-    term_text_append(p, buf);
 }
 
 void term_text_clear(term_panel_t *p) {

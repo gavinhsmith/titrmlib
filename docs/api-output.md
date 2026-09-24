@@ -104,9 +104,11 @@ Prints a string at the cursor.
 void term_panel_printf(term_panel_t * panel, const char * fmt, ...)
 ```
 
-Defined in src/titrm.h:398
+Defined in src/titrm.h:405
 
 Prints formatted text at the cursor.
+
+A small printf of titrmlib's own, so programs don't link the toolchain's (about 7 KB). It supports `d u x X c s %%`, the `l` modifier and a width with the `-` and `0` flags, e.g. `%-10s`, `%05ld`, `%02X`. Other specifiers (floats, precision, `p`) are printed as written.
 
 ---
 
@@ -116,7 +118,7 @@ Prints formatted text at the cursor.
 void term_panel_repeat(term_panel_t * panel, char c, int count)
 ```
 
-Defined in src/titrm.h:401
+Defined in src/titrm.h:408
 
 Prints `c``count` times.
 
@@ -128,7 +130,7 @@ Prints `c``count` times.
 void term_panel_clear(term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:404
+Defined in src/titrm.h:411
 
 Blanks the panel's content area and moves the cursor to 0,0.
 

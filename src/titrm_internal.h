@@ -4,6 +4,8 @@
 #include "titrm.h"
 #include "titrm_font.h"
 
+#include <stdarg.h>
+
 /* One character cell: glyph code and palette colors. Panels keep their own
  * cells (retained output); each frame they are composed into the screen grid. */
 typedef struct {
@@ -155,6 +157,12 @@ int term_keys_pending(void);
 /* Sends an event along the handler chain: the active scene's handler, then
  * the global one, stopping at the first that returns true. */
 void term_emit(term_ctx_t *ctx, term_event_type_t type, term_panel_t *panel, int value);
+
+/* Formats like vprintf, passing each character to `out`. Supports %d %u %x
+ * %X %c %s %%, the l modifier, and a width with the - and 0 flags; anything
+ * else is printed as written. */
+typedef void (*term_out_fn)(void *dst, char c);
+void term_vformat(term_out_fn out, void *dst, const char *fmt, va_list args);
 
 /* Widget hooks (titrm_widgets.c). */
 void term_widget_draw(term_panel_t *p);

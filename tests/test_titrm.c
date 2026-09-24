@@ -363,6 +363,32 @@ static void test_print_wrap_and_attr(void) {
     CHECK(row_blank(0, 4, TERM_COLS));
 }
 
+static void test_format(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_make_text(p, "");
+    term_text_appendf(p, "%d|%u|%ld|%x|%X|%c|%s|%%", -12345, 54321u, -1234567L, 0xbeefu, 0xBEEFu,
+                      'q', "str");
+    CHECK_STR(p->u.text.buf, "-12345|54321|-1234567|beef|BEEF|q|str|%");
+
+    term_text_set(p, "");
+    term_text_appendf(p, "[%5d][%-5d][%05d][%02X][%-4s][%3s][%s]", 42, 42, -42, 0x7, "ab", "abcd",
+                      (char *)NULL);
+    CHECK_STR(p->u.text.buf, "[   42][42   ][-0042][07][ab  ][abcd][(null)]");
+
+    /* Unsupported specifiers are printed as written, and output is not cut
+     * off at any fixed length. */
+    term_text_set(p, "");
+    term_text_appendf(p, "%f %.2s %", 1.5);
+    CHECK_STR(p->u.text.buf, "%f %.2s %");
+    char long_str[201];
+    memset(long_str, 'z', 200);
+    long_str[200] = '\0';
+    term_text_set(p, "");
+    term_text_appendf(p, "<%s>", long_str);
+    CHECK_EQ(p->u.text.len, 202);
+}
+
 static void test_border_and_title(void) {
     term_ctx_t *ctx = setup();
     term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(5));
@@ -1476,6 +1502,7 @@ static const struct {
     TEST(test_destroy_frees_subtree),
     TEST(test_print_is_clipped),
     TEST(test_print_wrap_and_attr),
+    TEST(test_format),
     TEST(test_border_and_title),
     TEST(test_glyph_blit),
     TEST(test_flush_only_redraws_changes),

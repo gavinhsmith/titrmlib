@@ -394,7 +394,14 @@ void term_panel_putc(term_panel_t *panel, char c);
 /** @brief Prints a string at the cursor. */
 void term_panel_print(term_panel_t *panel, const char *str);
 
-/** @brief Prints formatted text at the cursor. */
+/**
+ * @brief Prints formatted text at the cursor.
+ *
+ * A small printf of titrmlib's own, so programs don't link the toolchain's
+ * (about 7 KB). It supports `%d %u %x %X %c %s %%`, the `l` modifier and a
+ * width with the `-` and `0` flags, e.g. `%-10s`, `%05ld`, `%02X`. Other
+ * specifiers (floats, precision, `%p`) are printed as written.
+ */
 void term_panel_printf(term_panel_t *panel, const char *fmt, ...);
 
 /** @brief Prints `c` `count` times. */
@@ -433,7 +440,7 @@ void term_text_set(term_panel_t *panel, const char *text);
 /** @brief Adds text to the end. Use '\\n' to end lines, e.g. for a log. */
 void term_text_append(term_panel_t *panel, const char *text);
 
-/** @brief Adds formatted text to the end. */
+/** @brief Adds formatted text to the end, formatted as in term_panel_printf(). */
 void term_text_appendf(term_panel_t *panel, const char *fmt, ...);
 
 /** @brief Removes all the text. */

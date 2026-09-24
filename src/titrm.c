@@ -3,7 +3,6 @@
 #include <graphx.h>
 #include <keypadc.h>
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -760,13 +759,114 @@ void term_panel_print(term_panel_t *p, const char *str) {
     }
 }
 
+/* Our own printf core: CEdev's vsnprintf links nanoprintf, ~7.7 KB. */
+void term_vformat(term_out_fn out, void *dst, const char *fmt, va_list args) {
+    char num[12]; /* a 32-bit number in decimal, with its sign */
+    for (; *fmt; fmt++) {
+        if (*fmt != '%') {
+            out(dst, *fmt);
+            continue;
+        }
+        const char *spec = fmt++;
+        bool left = false;
+        char pad = ' ';
+        for (;; fmt++) {
+            if (*fmt == '-') {
+                left = true;
+            } else if (*fmt == '0') {
+                pad = '0';
+            } else {
+                break;
+            }
+        }
+        int width = 0;
+        while (*fmt >= '0' && *fmt <= '9') {
+            width = width * 10 + (*fmt++ - '0');
+        }
+        bool is_long = *fmt == 'l';
+        fmt += is_long;
+
+        const char *s = num;
+        int len = 1;
+        switch (*fmt) {
+        case 's':
+            s = va_arg(args, const char *);
+            if (!s) {
+                s = "(null)";
+            }
+            len = (int)strlen(s);
+            pad = ' ';
+            break;
+        case 'c':
+            num[0] = (char)va_arg(args, int);
+            break;
+        case '%':
+            num[0] = '%';
+            break;
+        case 'd':
+        case 'u':
+        case 'x':
+        case 'X': {
+            unsigned long v;
+            bool neg = false;
+            if (*fmt == 'd') {
+                long sv = is_long ? va_arg(args, long) : va_arg(args, int);
+                neg = sv < 0;
+                v = neg ? 0UL - (unsigned long)sv : (unsigned long)sv;
+            } else {
+                v = is_long ? va_arg(args, unsigned long) : va_arg(args, unsigned);
+            }
+            unsigned base = *fmt == 'x' || *fmt == 'X' ? 16 : 10;
+            const char *digits = *fmt == 'X' ? "0123456789ABCDEF" : "0123456789abcdef";
+            char *end = num + sizeof num;
+            char *q = end;
+            do {
+                *--q = digits[v % base];
+                v /= base;
+            } while (v);
+            if (neg && pad == '0') { /* the sign goes before the zeros */
+                out(dst, '-');
+                width--;
+            } else if (neg) {
+                *--q = '-';
+            }
+            s = q;
+            len = (int)(end - q);
+            break;
+        }
+        default: /* unsupported: print it as written */
+            while (spec < fmt) {
+                out(dst, *spec++);
+            }
+            if (!*fmt) {
+                return;
+            }
+            out(dst, *fmt);
+            continue;
+        }
+        if (!left) {
+            for (; width > len; width--) {
+                out(dst, pad);
+            }
+        }
+        for (int i = 0; i < len; i++) {
+            out(dst, s[i]);
+        }
+        for (; width > len; width--) {
+            out(dst, ' ');
+        }
+    }
+}
+
+static void out_panel(void *dst, char c) {
+    term_panel_putc(dst, c);
+}
+
 void term_panel_printf(term_panel_t *p, const char *fmt, ...) {
-    char buf[TERM_COLS * 2 + 1];
     va_list args;
     va_start(args, fmt);
-    vsnprintf(buf, sizeof buf, fmt, args);
+    term_vformat(out_panel, p, fmt, args);
     va_end(args);
-    term_panel_print(p, buf);
 }
 
 void term_panel_repeat(term_panel_t *p, char c, int count) {
