@@ -1,6 +1,6 @@
 # Phase 2 design
 
-Status: in progress on the `phase-2` branch; see [Progress](#progress).
+Status: complete, merged to `main` and released as v0.2.0; see [Progress](#progress).
 titrmlib is at v0.3.0, so the API may change freely until v1.0.
 
 Phase 2 reworks how titrmlib renders and routes input, then adds scenes,

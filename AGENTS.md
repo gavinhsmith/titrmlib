@@ -39,14 +39,12 @@ v0.3.0 (code page 437) is tagged, with its release still a draft.
 The ASCII glyphs have been checked on a real TI-84 Plus CE; the CP437 glyphs
 added in v0.3.0 have only been checked in CEmu.
 
-**Phase 2: in progress on the `phase-2` branch.** The design, build order and
-progress are in [DESIGN.md](DESIGN.md). Done: retained panels and
-change-based rendering, the key queue (keypadc input), app-driven focus,
-the new events, scenes, overlays, the revised widget set with the demo
-rebuilt on it, and color. Phase 2 is complete on the branch and not yet
-merged; `demo.gif` still shows the stage 1 demo.
-Breaking API changes are fine until v1.0. Follow DESIGN.md's build order, and
-update it if a decision changes during implementation.
+**Phase 2: complete, merged to `main` in PR #1 and released as v0.2.0.**
+The design and build order are in [DESIGN.md](DESIGN.md). It added retained
+panels and change-based rendering, the key queue (keypadc input), app-driven
+focus, the new events, scenes, overlays, the revised widget set with the demo
+rebuilt on it, and color. `demo.gif` still shows the stage 1 demo.
+Breaking API changes are fine until v1.0.
 
 ## Core rules
 
