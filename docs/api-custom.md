@@ -20,7 +20,7 @@ A custom widget is a panel with a key handler: make it focusable, print its cont
 enum term_align_t
 ```
 
-Defined in src/titrm.h:565
+Defined in src/titrm.h:573
 
 Text alignment, for text widgets.
 
@@ -42,7 +42,7 @@ Text alignment, for text widgets.
 using term_key_fn = bool(*)
 ```
 
-Defined in src/titrm.h:585
+Defined in src/titrm.h:593
 
 A key handler for a custom widget; return true if the key was used.
 
@@ -64,7 +64,7 @@ A key handler for a custom widget; return true if the key was used.
 void term_panel_set_align(term_panel_t * panel, term_align_t align)
 ```
 
-Defined in src/titrm.h:571
+Defined in src/titrm.h:579
 
 Aligns a text widget's lines.
 
@@ -76,7 +76,7 @@ Aligns a text widget's lines.
 void term_panel_set_focus_attr(term_panel_t * panel, uint8_t attr)
 ```
 
-Defined in src/titrm.h:579
+Defined in src/titrm.h:587
 
 Sets how the panel shows it has focus (TERM_ATTR_*; TERM_ATTR_REVERSE by default).
 
@@ -90,7 +90,7 @@ Used for the title, a list's selected row, an input's cursor and a focused check
 void term_panel_set_submit(term_panel_t * panel, bool submit)
 ```
 
-Defined in src/titrm.h:582
+Defined in src/titrm.h:590
 
 When on, [enter] on the focused panel sends TERM_EV_SUBMIT, if its widget doesn't use it.
 
@@ -102,7 +102,7 @@ When on, [enter] on the focused panel sends TERM_EV_SUBMIT, if its widget doesn'
 void term_panel_set_keys(term_panel_t * panel, term_key_fn fn, void * state)
 ```
 
-Defined in src/titrm.h:588
+Defined in src/titrm.h:596
 
 Keys while `panel` is focused go to `fn` first, before its built-in widget. NULL removes it.
 
@@ -114,7 +114,7 @@ Keys while `panel` is focused go to `fn` first, before its built-in widget. NULL
 void term_panel_send(term_panel_t * panel, term_event_type_t type, int value)
 ```
 
-Defined in src/titrm.h:591
+Defined in src/titrm.h:599
 
 Sends an event from `panel` along the handler chain, as a widget does (e.g. TERM_EV_SUBMIT).
 

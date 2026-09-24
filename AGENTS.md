@@ -33,8 +33,9 @@ Update this section when a stage finishes or the release state changes.
   **draft** release with `titrmlib-<tag>.zip` (sources and licenses). The
   maintainer adds the changes and publishes it.
 
-**Version:** `TITRM_VERSION` is `"0.4.0"`. v0.1.0 through v0.4.0 are
-released; v0.3.0 added code page 437 and v0.4.0 the formatting.
+**Version:** `TITRM_VERSION` is `"0.4.1"` (smaller memory use), not yet
+tagged. v0.1.0 through v0.4.0 are released; v0.3.0 added code page 437 and
+v0.4.0 the formatting.
 
 The ASCII glyphs have been checked on a real TI-84 Plus CE; the CP437 glyphs
 added in v0.3.0 and the styles added in v0.4.0 have only been checked in CEmu.
@@ -78,10 +79,11 @@ Breaking API changes are fine until v1.0.
   sized by layout, keeping what fits on resize). Output writes into them and
   marks the context dirty; panels with children hold no cells. Widgets
   rebuild their cells from state when marked stale (`term_panel_touch`).
-- **Frames:** only when something is dirty, `frame` composes every visible
-  panel's cells (and borders) into `grid`, then `flush` compares `grid` with
-  `shown` and draws only changed cells. Composing is cheap; nothing is
-  reprinted per frame.
+- **Frames:** only when something is dirty, `frame` rebuilds stale widgets
+  (`render_stale`), then for each row composes the active scene and its
+  overlays into `row_buf` (`compose_row`: borders, then leaf cells, children
+  over parents) and `flush_row` draws the cells that differ from `shown`.
+  There is no second copy of the screen; nothing is reprinted per frame.
 - **Colors:** each panel has `fg`/`bg` palette indices, copied into cells as
   they are written (`set_cell`; `TERM_ATTR_REVERSE` swaps them). Children
   start with their parent's colors, and a container whose background differs
@@ -108,12 +110,12 @@ Breaking API changes are fine until v1.0.
 - **Scenes:** root panels (no parent) are scenes. `ctx->root` is the first,
   `ctx->scene` the active one; only it is composed and gets events. Layout
   covers every scene, so hidden scenes can be printed into. A scene root keeps
-  its handler in `handler`/`handler_state`.
-- **Overlays:** root panels with an `owner` scene and their own rect
-  (`req_*`), kept bottom to top in `ctx->overlays`. A frame composes the
-  active scene, then its overlays in order, each over a blanked rect. Closing
-  gives focus back to `restore` under the rules in `titrm.h`; freeing a panel
-  clears any `restore` that points at it.
+  its handler in `root.handler`.
+- **Overlays:** root panels with an `owner` scene, kept bottom to top in
+  `ctx->overlays`. Their rect is set when they open and layout leaves it. A
+  frame composes the active scene, then its overlays in order, each over a
+  blanked rect. Closing gives focus back to `root.restore` under the rules in
+  `titrm.h`; freeing a panel clears any `root.restore` that points at it.
 - **Events:** keys go to the focused widget, then `dispatch()`: the active
   scene's handler, then the global one, stopping at the first that returns
   true. Scene enter/leave go only to that scene's handler.
@@ -158,6 +160,11 @@ Code that is cheap on a desktop can be slow here:
   them as a 32-bit integer with `__lshl`/`__ladd` calls per byte. Write the
   fields through a pointer (`set_cell`).
 - Check the generated assembly in `obj/<program>/lto.s` when a hot path is slow.
+- RAM is tight, and programs run from RAM too. Static RAM is mostly `shown`
+  (6.4 KB), the panel pool (~83 bytes per panel, `TERM_MAX_PANELS`) and the
+  pixel tables (2.3 KB); widget buffers are on the heap. Don't add another
+  screen-sized buffer or put buffers in the panel struct. The `.map` file in
+  `bin/<program>/` lists every symbol's size.
 
 Update times (the app's printing plus the frame) are measured by the `perf`
 hardware test against fixed budgets:
@@ -165,9 +172,9 @@ hardware test against fixed budgets:
 | Update | Emulated time | Budget |
 |---|---|---|
 | Nothing changed | ~1 ms | 5 ms |
-| One row changed | ~47 ms | 50 ms (the phase 2 goal) |
-| Every cell changed | ~462 ms | 600 ms |
-| Every cell changed, in color | ~462 ms | 600 ms |
+| One row changed | ~48 ms | 50 ms (the phase 2 goal) |
+| Every cell changed | ~466 ms | 600 ms |
+| Every cell changed, in color | ~466 ms | 600 ms |
 
 Most of a full-screen update is drawing 1,590 cells at ~0.2 ms each, plus a
 keypad scan per row. The `widgets` hardware test runs at the autotester's
@@ -180,7 +187,8 @@ Details are in [CONTRIBUTING.md](CONTRIBUTING.md). In short:
 - Unit tests (`make -C tests`) build the library natively against
   `tests/stubs/`, where `gfx_vbuffer` is an in-memory framebuffer and
   `kb_Scan` presses scripted keys (`stub_keys`, `stub_hold`).
-  `test_titrm.c` includes `titrm.c` directly so it can read the grid.
+  `test_titrm.c` includes `titrm.c` directly so it can read what's on
+  screen (`shown`).
 - Hardware tests (`make hw-test`, needs `AUTOTESTER_ROM`) run in CEmu's
   `cemu-autotester` and use nothing else to drive the emulator. When a change
   alters screens on purpose, re-record with `make hw-record` and open the

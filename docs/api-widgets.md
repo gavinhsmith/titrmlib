@@ -42,7 +42,7 @@ Widgets draw in the panel's attribute ([term_panel_set_attr()](api-output.md#ter
 void term_make_text(term_panel_t * panel, const char * text)
 ```
 
-Defined in src/titrm.h:475
+Defined in src/titrm.h:483
 
 Text, word-wrapped to the panel. The text is copied.
 
@@ -56,7 +56,7 @@ Text, word-wrapped to the panel. The text is copied.
 void term_text_set(term_panel_t * panel, const char * text)
 ```
 
-Defined in src/titrm.h:478
+Defined in src/titrm.h:486
 
 Replaces a text widget's text (copied).
 
@@ -68,7 +68,7 @@ Replaces a text widget's text (copied).
 void term_text_append(term_panel_t * panel, const char * text)
 ```
 
-Defined in src/titrm.h:481
+Defined in src/titrm.h:489
 
 Adds text to the end. Use '\n' to end lines, e.g. for a log.
 
@@ -80,7 +80,7 @@ Adds text to the end. Use '\n' to end lines, e.g. for a log.
 void term_text_appendf(term_panel_t * panel, const char * fmt, ...)
 ```
 
-Defined in src/titrm.h:484
+Defined in src/titrm.h:492
 
 Adds formatted text to the end, formatted as in [term_panel_printf()](api-output.md#term_panel_printf).
 
@@ -92,7 +92,7 @@ Adds formatted text to the end, formatted as in [term_panel_printf()](api-output
 void term_text_clear(term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:487
+Defined in src/titrm.h:495
 
 Removes all the text.
 
@@ -104,7 +104,7 @@ Removes all the text.
 void term_text_limit(term_panel_t * panel, int bytes)
 ```
 
-Defined in src/titrm.h:490
+Defined in src/titrm.h:498
 
 Keeps at most `bytes` of text, dropping the oldest lines first. The default is 1024.
 
@@ -116,7 +116,7 @@ Keeps at most `bytes` of text, dropping the oldest lines first. The default is 1
 void term_text_autoscroll(term_panel_t * panel, bool on)
 ```
 
-Defined in src/titrm.h:493
+Defined in src/titrm.h:501
 
 Keeps the end of the text in view as it grows, unless scrolled up; scrolling back to the end resumes it.
 
@@ -128,7 +128,7 @@ Keeps the end of the text in view as it grows, unless scrolled up; scrolling bac
 void term_text_scroll(term_panel_t * panel, int rows)
 ```
 
-Defined in src/titrm.h:496
+Defined in src/titrm.h:504
 
 Scrolls by `rows` (negative is up), within the text.
 
@@ -140,7 +140,7 @@ Scrolls by `rows` (negative is up), within the text.
 void term_make_button(term_panel_t * panel, const char * label)
 ```
 
-Defined in src/titrm.h:504
+Defined in src/titrm.h:512
 
 A button: centered text in reverse video that sends TERM_EV_SUBMIT on [enter].
 
@@ -154,7 +154,7 @@ It's a focusable text widget with those settings, and an arrow at its left edge 
 void term_make_checkbox(term_panel_t * panel, const char * label, bool checked)
 ```
 
-Defined in src/titrm.h:507
+Defined in src/titrm.h:515
 
 An on/off item: "[x] label". [enter] toggles it and sends TERM_EV_CHANGE (value = 1 if checked).
 
@@ -166,7 +166,7 @@ An on/off item: "[x] label". [enter] toggles it and sends TERM_EV_CHANGE (value 
 bool term_checkbox_checked(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:510
+Defined in src/titrm.h:518
 
 Whether the checkbox is checked.
 
@@ -178,7 +178,7 @@ Whether the checkbox is checked.
 void term_checkbox_set(term_panel_t * panel, bool checked)
 ```
 
-Defined in src/titrm.h:513
+Defined in src/titrm.h:521
 
 Checks or unchecks the checkbox (sends no event).
 
@@ -190,7 +190,7 @@ Checks or unchecks the checkbox (sends no event).
 void term_make_list(term_panel_t * panel, const char *const * items, int count)
 ```
 
-Defined in src/titrm.h:520
+Defined in src/titrm.h:528
 
 Selectable list. up/down move (TERM_EV_CHANGE), [enter] emits TERM_EV_SUBMIT.
 
@@ -204,7 +204,7 @@ Items are not copied. Embed icons with TERM_S_* (e.g. TERM_S_SIG3 "HomeWiFi").
 void term_list_set_items(term_panel_t * panel, const char *const * items, int count)
 ```
 
-Defined in src/titrm.h:523
+Defined in src/titrm.h:531
 
 Replaces a list's items. Items are not copied.
 
@@ -216,7 +216,7 @@ Replaces a list's items. Items are not copied.
 int term_list_selected(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:526
+Defined in src/titrm.h:534
 
 Index of the selected item, or -1 if the list is empty.
 
@@ -228,7 +228,7 @@ Index of the selected item, or -1 if the list is empty.
 void term_list_select(term_panel_t * panel, int index)
 ```
 
-Defined in src/titrm.h:529
+Defined in src/titrm.h:537
 
 Selects an item; out-of-range indexes are clamped.
 
@@ -240,7 +240,7 @@ Selects an item; out-of-range indexes are clamped.
 void term_make_input(term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:537
+Defined in src/titrm.h:545
 
 Single-line text field.
 
@@ -254,7 +254,7 @@ Typing inserts, [del] backspaces, [clear] empties, left/right move the cursor, [
 const char * term_input_text(const term_panel_t * panel)
 ```
 
-Defined in src/titrm.h:540
+Defined in src/titrm.h:548
 
 The input's current text.
 
@@ -266,7 +266,7 @@ The input's current text.
 void term_input_set(term_panel_t * panel, const char * text)
 ```
 
-Defined in src/titrm.h:543
+Defined in src/titrm.h:551
 
 Replaces the input's text (up to TERM_INPUT_MAX characters).
 
@@ -278,7 +278,7 @@ Replaces the input's text (up to TERM_INPUT_MAX characters).
 void term_make_progress(term_panel_t * panel, int max)
 ```
 
-Defined in src/titrm.h:546
+Defined in src/titrm.h:554
 
 Horizontal progress bar filling the panel's first row, from 0 to `max`.
 
@@ -290,7 +290,7 @@ Horizontal progress bar filling the panel's first row, from 0 to `max`.
 void term_progress_set(term_panel_t * panel, int value)
 ```
 
-Defined in src/titrm.h:549
+Defined in src/titrm.h:557
 
 Sets the progress value; it is clamped to 0..max.
 
