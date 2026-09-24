@@ -34,7 +34,7 @@ int term_rows(void) { return TERM_ROWS; }
  * written field by field: clang builds a 4-byte struct returned by value as
  * a 32-bit integer, with a library call per byte. */
 static inline __attribute__((always_inline)) void set_cell(term_cell_t *c, const term_panel_t *p,
-                                                        uint8_t ch, uint8_t attr) {
+                                                           uint8_t ch, uint8_t attr) {
     bool reverse = attr & TERM_ATTR_REVERSE;
     c->ch = ch;
     c->fg = reverse ? p->bg : p->fg;
@@ -42,7 +42,8 @@ static inline __attribute__((always_inline)) void set_cell(term_cell_t *c, const
     c->style = attr & TERM_STYLES;
 }
 
-static void set_blank(term_cell_t *c, const term_panel_t *p) {
+/* Out of line: blanks are set once per fill, not per character. */
+static __attribute__((noinline)) void set_blank(term_cell_t *c, const term_panel_t *p) {
     set_cell(c, p, 0, TERM_ATTR_NORMAL);
 }
 

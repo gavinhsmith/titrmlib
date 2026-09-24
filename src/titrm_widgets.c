@@ -189,6 +189,19 @@ void term_text_scroll(term_panel_t *p, int rows) {
     }
 }
 
+/* Draws one laid-out row of a text widget, aligned, without trailing
+ * spaces. Out of line: text_layout() emits rows from several places. */
+static __attribute__((noinline)) void draw_line(term_panel_t *p, int row, const char *line,
+                                                const uint8_t *style, int len, uint8_t attr) {
+    while (len > 0 && line[len - 1] == ' ') {
+        len--;
+    }
+    int col = p->align == TERM_ALIGN_CENTER ? (term_panel_width(p) - len) / 2 : 0;
+    for (int i = 0; i < len; i++) {
+        term_put(p, col + i, row, (uint8_t)line[i], attr | style[i]);
+    }
+}
+
 /* Word-wraps the text into rows of the panel's width, at spaces; '\n' forces
  * a break and over-long words are split. Returns how many rows it takes. If
  * `draw`, rows top..top+height-1 are drawn in `attr`, aligned. */
@@ -206,20 +219,13 @@ static int text_layout(term_panel_t *p, bool draw, int top, uint8_t attr) {
     int rows = 0;
     bool soft = false; /* this row began with a wrap, not a '\n' or the start */
 
-#define EMIT()                                                                    \
-    do {                                                                          \
-        if (draw && rows >= top && rows - top < h) {                              \
-            int n = len;                                                          \
-            while (n > 0 && line[n - 1] == ' ') {                                 \
-                n--;                                                              \
-            }                                                                     \
-            int col = p->align == TERM_ALIGN_CENTER ? (w - n) / 2 : 0;            \
-            for (int i = 0; i < n; i++) {                                         \
-                term_put(p, col + i, rows - top, (uint8_t)line[i], attr | line_style[i]); \
-            }                                                                     \
-        }                                                                         \
-        rows++;                                                                   \
-        len = 0;                                                                  \
+#define EMIT()                                                                 \
+    do {                                                                       \
+        if (draw && rows >= top && rows - top < h) {                           \
+            draw_line(p, rows - top, line, line_style, len, attr);             \
+        }                                                                      \
+        rows++;                                                                \
+        len = 0;                                                               \
     } while (0)
 
     while (*s) {
