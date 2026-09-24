@@ -21,7 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "titrm_chars.h" /* TERM_CH_* / TERM_S_* glyph names for 0x80-0xFF */
+#include "titrm_chars.h" /* TERM_CH_* / TERM_S_* glyph names */
 
 #ifdef __cplusplus
 extern "C" {
@@ -468,7 +468,7 @@ void term_checkbox_set(term_panel_t *panel, bool checked);
 /**
  * @brief Selectable list. up/down move (TERM_EV_CHANGE), [enter] emits TERM_EV_SUBMIT.
  *
- * Items are not copied. Embed icons with TERM_S_* (e.g. TERM_S_CHECK "Done").
+ * Items are not copied. Embed icons with TERM_S_* (e.g. TERM_S_SIG3 "HomeWiFi").
  */
 void term_make_list(term_panel_t *panel, const char *const *items, int count);
 

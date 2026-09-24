@@ -128,10 +128,10 @@ int term_keys_pending(void) {
 
 /* ---- Glyph blit ---------------------------------------------------------- */
 
-/* Box drawing and the solid block are stretched over the gap between cells
+/* Box drawing and the blocks are stretched over the gap between cells
  * (right column and bottom row are repeated) so that lines join up. */
 static bool is_connected(uint8_t ch) {
-    return (ch >= TERM_CH_HLINE && ch <= TERM_CH_CROSS) || ch == TERM_CH_BLOCK;
+    return ch >= TERM_CH_CONNECTED_FIRST && ch <= TERM_CH_CONNECTED_LAST;
 }
 
 /* The pixels of one cell row for each 6-bit mask, bit (CELL_W-1) leftmost,

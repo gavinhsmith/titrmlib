@@ -21,7 +21,7 @@ int main(void) {
     term_make_text(box,
                    "Hello from titrmlib!\n"
                    "\n"
-                   "This whole screen is a " TERM_S_CHECK " character grid "
+                   "This whole screen is a " TERM_S_SMILE " character grid "
                    "drawn with a 5x7 font.\n"
                    "\n"
                    "Press [clear] to quit.");

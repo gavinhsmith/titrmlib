@@ -99,7 +99,7 @@ int main(void) {
 
     for (int i = 0; i < NUM_ITEMS; i++) {
         /* A few items lead with icons to check glyphs in reverse video. */
-        const char *icon = i % 3 == 0 ? TERM_S_CHECK : (i % 3 == 1 ? TERM_S_SIG2 : "");
+        const char *icon = i % 3 == 0 ? TERM_S_SMILE : (i % 3 == 1 ? TERM_S_SIG2 : "");
         sprintf(app.labels[i], "%sitem %d", icon, i + 1);
         app.items[i] = app.labels[i];
     }

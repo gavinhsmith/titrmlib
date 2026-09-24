@@ -165,24 +165,17 @@ static void test_font_table(void) {
             CHECK((term_font[code].rows[r] & ~0x1F) == 0); /* 5 pixels per row */
         }
     }
-    CHECK(glyph_empty(' '));
-    for (int code = 0x21; code <= 0x7E; code++) {
-        if (glyph_empty((uint8_t)code)) {
-            fprintf(stderr, "  printable 0x%02X '%c' has no glyph\n", code, code);
+    /* CP437: every code has a glyph but NUL, space and NBSP. */
+    for (int code = 0; code < 256; code++) {
+        bool blank = code == 0x00 || code == ' ' || code == 0xFF;
+        if (glyph_empty((uint8_t)code) != blank) {
+            fprintf(stderr, "  0x%02X should %s\n", code, blank ? "be blank" : "have a glyph");
         }
-        CHECK(!glyph_empty((uint8_t)code));
+        CHECK(glyph_empty((uint8_t)code) == blank);
     }
-    static const uint8_t named[] = {
-        TERM_CH_HLINE, TERM_CH_VLINE, TERM_CH_TL, TERM_CH_TR, TERM_CH_BL,
-        TERM_CH_BR, TERM_CH_LTEE, TERM_CH_RTEE, TERM_CH_TTEE, TERM_CH_BTEE,
-        TERM_CH_CROSS, TERM_CH_CHECK, TERM_CH_CROSSMARK, TERM_CH_DOT,
-        TERM_CH_DOT_EMPTY, TERM_CH_ARROW_R, TERM_CH_ARROW_D, TERM_CH_ARROW_U,
-        TERM_CH_SIG1, TERM_CH_SIG2, TERM_CH_SIG3, TERM_CH_SHADE,
-        TERM_CH_SMILE, TERM_CH_BLOCK,
-    };
-    for (unsigned i = 0; i < sizeof named; i++) {
-        CHECK(!glyph_empty(named[i]));
-    }
+    /* Box drawing and blocks join across cells; shades and letters don't. */
+    CHECK(is_connected(TERM_CH_VLINE) && is_connected(0xCD) && is_connected(0xDF));
+    CHECK(!is_connected(TERM_CH_SHADE) && !is_connected(0xE0) && !is_connected('-'));
 }
 
 /* ---- Layout -------------------------------------------------------------- */
@@ -1015,7 +1008,7 @@ static void test_checkbox(void) {
     CHECK(term_checkbox_checked(c));
     CHECK_EQ(count_events(TERM_EV_CHANGE), 1);
     CHECK_EQ(last_event(TERM_EV_CHANGE)->value, 1);
-    CHECK_EQ(ch_at(1, 0), TERM_CH_CHECK);
+    CHECK_STR(text_at(0, 0, 3), "[x]");
     CHECK_EQ(attr_at(8, 0), TERM_ATTR_REVERSE); /* focused */
 
     term_checkbox_set(c, false); /* no event */

@@ -2,61 +2,58 @@
 #ifndef TITRM_CHARS_H
 #define TITRM_CHARS_H
 
-/* Glyphs in the reserved 0x80-0xFF range. See FONT.md for the full table. */
-#define TERM_CH_HLINE      0x80
-#define TERM_CH_VLINE      0x81
-#define TERM_CH_TL         0x82
-#define TERM_CH_TR         0x83
-#define TERM_CH_BL         0x84
-#define TERM_CH_BR         0x85
-#define TERM_CH_LTEE       0x86
-#define TERM_CH_RTEE       0x87
-#define TERM_CH_TTEE       0x88
-#define TERM_CH_BTEE       0x89
-#define TERM_CH_CROSS      0x8A
-#define TERM_CH_CHECK      0x90
-#define TERM_CH_CROSSMARK  0x91
-#define TERM_CH_DOT        0x92
-#define TERM_CH_DOT_EMPTY  0x93
-#define TERM_CH_ARROW_R    0x94
-#define TERM_CH_ARROW_D    0x95
-#define TERM_CH_ARROW_U    0x96
-#define TERM_CH_SIG0       0x98
-#define TERM_CH_SIG1       0x99
-#define TERM_CH_SIG2       0x9A
-#define TERM_CH_SIG3       0x9B
-#define TERM_CH_SHADE      0x9C
-#define TERM_CH_SMILE      0x9D
-#define TERM_CH_BLOCK      0x9E
+/* Codes 0x01-0x1F and 0x7F-0xFF follow code page 437 (see FONT.md for the
+ * full table); these are the glyphs titrmlib names. */
+#define TERM_CH_ARROW_D    0x1F
+#define TERM_CH_ARROW_R    0x10
+#define TERM_CH_ARROW_U    0x1E
+#define TERM_CH_BL         0xC0
+#define TERM_CH_BLOCK      0xDB
+#define TERM_CH_BR         0xD9
+#define TERM_CH_BTEE       0xC1
+#define TERM_CH_CROSS      0xC5
+#define TERM_CH_HLINE      0xC4
+#define TERM_CH_LTEE       0xC3
+#define TERM_CH_RTEE       0xB4
+#define TERM_CH_SHADE      0xB1
+#define TERM_CH_SIG0       0x13
+#define TERM_CH_SIG1       0x14
+#define TERM_CH_SIG2       0x15
+#define TERM_CH_SIG3       0x16
+#define TERM_CH_SMILE      0x01
+#define TERM_CH_TL         0xDA
+#define TERM_CH_TR         0xBF
+#define TERM_CH_TTEE       0xC2
+#define TERM_CH_VLINE      0xB3
+
+/* Box drawing and blocks: stretched over the gaps between cells. */
+#define TERM_CH_CONNECTED_FIRST 0xB3
+#define TERM_CH_CONNECTED_LAST  0xDF
 
 /* The same glyphs as string literals, for building text:
- *   TERM_S_CHECK "Done"  ->  "\x90" "Done"
+ *   TERM_S_SIG3 "HomeWiFi"  ->  "\x16" "HomeWiFi"
  * (adjacent literals concatenate after escapes are processed, so a
  * following hex digit can't be swallowed into the escape.) */
-#define TERM_S_HLINE      "\x80"
-#define TERM_S_VLINE      "\x81"
-#define TERM_S_TL         "\x82"
-#define TERM_S_TR         "\x83"
-#define TERM_S_BL         "\x84"
-#define TERM_S_BR         "\x85"
-#define TERM_S_LTEE       "\x86"
-#define TERM_S_RTEE       "\x87"
-#define TERM_S_TTEE       "\x88"
-#define TERM_S_BTEE       "\x89"
-#define TERM_S_CROSS      "\x8A"
-#define TERM_S_CHECK      "\x90"
-#define TERM_S_CROSSMARK  "\x91"
-#define TERM_S_DOT        "\x92"
-#define TERM_S_DOT_EMPTY  "\x93"
-#define TERM_S_ARROW_R    "\x94"
-#define TERM_S_ARROW_D    "\x95"
-#define TERM_S_ARROW_U    "\x96"
-#define TERM_S_SIG0       "\x98"
-#define TERM_S_SIG1       "\x99"
-#define TERM_S_SIG2       "\x9A"
-#define TERM_S_SIG3       "\x9B"
-#define TERM_S_SHADE      "\x9C"
-#define TERM_S_SMILE      "\x9D"
-#define TERM_S_BLOCK      "\x9E"
+#define TERM_S_ARROW_D    "\x1F"
+#define TERM_S_ARROW_R    "\x10"
+#define TERM_S_ARROW_U    "\x1E"
+#define TERM_S_BL         "\xC0"
+#define TERM_S_BLOCK      "\xDB"
+#define TERM_S_BR         "\xD9"
+#define TERM_S_BTEE       "\xC1"
+#define TERM_S_CROSS      "\xC5"
+#define TERM_S_HLINE      "\xC4"
+#define TERM_S_LTEE       "\xC3"
+#define TERM_S_RTEE       "\xB4"
+#define TERM_S_SHADE      "\xB1"
+#define TERM_S_SIG0       "\x13"
+#define TERM_S_SIG1       "\x14"
+#define TERM_S_SIG2       "\x15"
+#define TERM_S_SIG3       "\x16"
+#define TERM_S_SMILE      "\x01"
+#define TERM_S_TL         "\xDA"
+#define TERM_S_TR         "\xBF"
+#define TERM_S_TTEE       "\xC2"
+#define TERM_S_VLINE      "\xB3"
 
 #endif

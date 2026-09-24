@@ -97,9 +97,9 @@ static void show_details(demo_t *d) {
 
     snprintf(text, sizeof text, "SSID:     %s\nSignal:   %c\nSecurity: %s\nStatus:   %s", n->ssid,
              TERM_CH_SIG0 + n->signal, n->security,
-             i == d->connected    ? TERM_S_CHECK " connected"
-             : i == d->connecting ? TERM_S_DOT " connecting"
-                                  : TERM_S_DOT_EMPTY " idle");
+             i == d->connected    ? "connected"
+             : i == d->connecting ? "connecting..."
+                                  : "idle");
     term_text_set(d->details, text);
 }
 
@@ -256,7 +256,7 @@ static bool on_event(term_ctx_t *ctx, const term_event_t *ev, void *state) {
                 if (d->step >= CONNECT_STEPS) {
                     d->connected = d->connecting;
                     d->connecting = -1;
-                    term_text_appendf(d->log, TERM_S_CHECK "Connected: %s\n", networks[d->connected].ssid);
+                    term_text_appendf(d->log, "Connected to %s\n", networks[d->connected].ssid);
                 }
             }
             break;

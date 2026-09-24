@@ -194,7 +194,7 @@ Defined in src/titrm.h:473
 
 Selectable list. up/down move (TERM_EV_CHANGE), [enter] emits TERM_EV_SUBMIT.
 
-Items are not copied. Embed icons with TERM_S_* (e.g. TERM_S_CHECK "Done").
+Items are not copied. Embed icons with TERM_S_* (e.g. TERM_S_SIG3 "HomeWiFi").
 
 ---
 

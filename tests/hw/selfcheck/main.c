@@ -97,7 +97,7 @@ typedef struct {
 static const char *const items[] = {"one", "two", "three"};
 
 static void print_text(term_panel_t *p) {
-    term_panel_print(p, "Hello, CE! " TERM_S_CHECK "\n");
+    term_panel_print(p, "Hello, CE! \xE1\n");
     term_panel_printf(p, "%d|%u|%ld|%x", -12345, 54321u, 1234567L, 0xBEEFu);
 }
 
@@ -115,7 +115,7 @@ static void print_reverse(term_panel_t *p) {
 static void print_results(term_panel_t *p) {
     int failed = 0;
     for (int i = 0; i < num_checks; i++) {
-        term_panel_print(p, checks[i].ok ? TERM_S_CHECK " " : TERM_S_CROSSMARK " ");
+        term_panel_print(p, checks[i].ok ? "+ " : "x ");
         term_panel_print(p, checks[i].name);
         term_panel_putc(p, '\n');
         failed += !checks[i].ok;
@@ -146,7 +146,7 @@ static void run_checks(term_ctx_t *ctx, app_t *app) {
     check("libc: snprintf with 24-bit int", strcmp(buf, "-12345|54321|1234567|beef") == 0);
 
     check("screen: plain text", text_at(1, 1, "Hello, CE!", false));
-    check("screen: glyph 0x90 from a string", cell_is(12, 1, TERM_CH_CHECK, false));
+    check("screen: glyph 0xE1 from a string", cell_is(12, 1, 0xE1, false));
     check("screen: panel printf", text_at(1, 2, "-12345|54321|1234567|beef", false));
     check("screen: text clipped to panel", text_at(1, 5, "XXXXXXXX", false));
     check("screen: nothing leaks to sibling", blank_rect(10, 4, 10, 5));
