@@ -601,6 +601,45 @@ static void test_inline_styles_list(void) {
     CHECK_EQ(style_at(4, 3), TERM_ATTR_UNDERLINE);
 }
 
+static void test_tabs(void) {
+    term_ctx_t *ctx = setup();
+    term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(3));
+    term_panel_t *row = term_split(term_root(ctx), TERM_VERTICAL, TERM_FILL);
+    term_panel_print(p, "a\tb\tcdefg\th\n");
+    term_panel_print(p, "xxxxxx\r\tY"); /* a tab moves without painting */
+    draw(ctx);
+    CHECK_STR(text_at(0, 0, 17), "a   b   cdefg   h");
+    CHECK_STR(text_at(0, 1, 6), "xxxxYx");
+
+    p->cur_x = 253; /* the cursor clamps instead of wrapping around */
+    term_panel_putc(p, '\t');
+    CHECK_EQ(p->cur_x, 255);
+
+    /* Wrapping: a character after tabs past the edge starts a new line. */
+    term_panel_t *narrow = term_split(row, TERM_HORIZONTAL, TERM_FIXED(6));
+    term_panel_wrap(narrow, true);
+    term_panel_print(narrow, "ab\tcdefg\t\tf");
+    /* Text widgets expand tabs to spaces; list items too. */
+    term_panel_t *text = term_split(row, TERM_HORIZONTAL, TERM_FIXED(10));
+    term_make_text(text, "a\tb\n\tc\nabcd\te\nx y\tz");
+    const char *items[] = {"x\ty", "abcde\tf"};
+    term_panel_t *list = term_split(row, TERM_HORIZONTAL, TERM_FIXED(12));
+    term_make_list(list, items, 2);
+    draw(ctx);
+
+    CHECK_STR(text_at(0, 3, 6), "ab  cd");
+    CHECK_STR(text_at(0, 4, 6), "efg   ");
+    CHECK_STR(text_at(0, 5, 6), "f     ");
+    int tx = text->ix;
+    CHECK_STR(text_at(tx, 3, 10), "a   b     ");
+    CHECK_STR(text_at(tx, 4, 10), "    c     ");
+    CHECK_STR(text_at(tx, 5, 10), "abcd    e ");
+    CHECK_STR(text_at(tx, 6, 10), "x y z     ");
+    int lx = list->ix;
+    CHECK_STR(text_at(lx + 1, 3, 9), "x   y    ");
+    CHECK_STR(text_at(lx + 1, 4, 9), "abcde   f");
+}
+
 static void test_connected_glyphs_bridge_gaps(void) {
     term_ctx_t *ctx = setup();
     term_panel_set_border(term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(3)), true);
@@ -1650,6 +1689,7 @@ static const struct {
     TEST(test_inline_styles_print),
     TEST(test_inline_styles_text),
     TEST(test_inline_styles_list),
+    TEST(test_tabs),
     TEST(test_flush_only_redraws_changes),
     TEST(test_connected_glyphs_bridge_gaps),
     TEST(test_output_is_retained),

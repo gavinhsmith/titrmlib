@@ -777,6 +777,10 @@ void term_panel_putc(term_panel_t *p, char c) {
         p->cur_x = 0;
         return;
     }
+    if (c == '\t') { /* moves to the next stop without painting */
+        p->cur_x = p->cur_x >= 256 - TERM_TAB ? 255 : (p->cur_x + TERM_TAB) & ~(TERM_TAB - 1);
+        return;
+    }
     if (p->wrap && p->cur_x >= p->cells_w) {
         p->cur_x = 0;
         if (p->cur_y < 255) {

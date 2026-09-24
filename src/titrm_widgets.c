@@ -31,6 +31,13 @@ static void put_str(term_panel_t *p, int col, int row, const char *s, int max, u
             s += e;
             continue;
         }
+        if (*s == '\t') { /* spaces to the next stop */
+            do {
+                term_put(p, col + i++, row, ' ', attr | style);
+            } while (i < max && (i & (TERM_TAB - 1)));
+            s++;
+            continue;
+        }
         term_put(p, col + i++, row, (uint8_t)*s++, attr | style);
     }
 }
@@ -226,17 +233,22 @@ static int text_layout(term_panel_t *p, bool draw, int top, uint8_t attr) {
             soft = false;
             style = 0; /* inline styles end with the line */
             s++;
-        } else if (*s == ' ') {
-            if (len < w && !(len == 0 && soft)) {
-                line_style[len] = style;
-                line[len++] = ' '; /* indentation is kept, except on a wrapped row */
+        } else if (*s == ' ' || *s == '\t') {
+            /* Indentation is kept, except on a wrapped row; a tab is spaces
+             * to the next stop. */
+            if (!(len == 0 && soft)) {
+                int stop = *s == '\t' ? (len + TERM_TAB) & ~(TERM_TAB - 1) : len + 1;
+                while (len < stop && len < w) {
+                    line_style[len] = style;
+                    line[len++] = ' ';
+                }
             }
             s++;
         } else {
             /* A word: `n` bytes, `width` of them shown (escapes take none). */
             int n = 0;
             int width = 0;
-            while (s[n] && s[n] != ' ' && s[n] != '\n') {
+            while (s[n] && s[n] != ' ' && s[n] != '\t' && s[n] != '\n') {
                 if (s[n] == TERM_ESC) {
                     n += esc_len(s + n);
                 } else {

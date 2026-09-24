@@ -420,7 +420,10 @@ void term_panel_set_colors(term_panel_t *panel, uint8_t fg, uint8_t bg);
 /** @brief Wrap at the right edge instead of clipping (the default). */
 void term_panel_wrap(term_panel_t *panel, bool wrap);
 
-/** @brief Prints one character. '\\n' starts a new line. */
+/**
+ * @brief Prints one character. '\\n' starts a new line, and '\\t' moves to
+ * the next tab stop (every 4 columns) without painting over what's there.
+ */
 void term_panel_putc(term_panel_t *panel, char c);
 
 /** @brief Prints a string at the cursor. */
@@ -460,9 +463,10 @@ void term_panel_clear(term_panel_t *panel);
 /**
  * @brief Text, word-wrapped to the panel. The text is copied.
  *
- * '\\n' starts a new line. If the text is taller than the panel, a focusable
- * text widget scrolls with up/down, and arrows at the right edge show that
- * more is above or below.
+ * '\\n' starts a new line, and '\\t' is spaces to the next stop (every 4
+ * columns; list items and labels too). If the text is taller than the panel,
+ * a focusable text widget scrolls with up/down, and arrows at the right edge
+ * show that more is above or below.
  */
 void term_make_text(term_panel_t *panel, const char *text);
 

@@ -23,6 +23,9 @@ typedef struct {
 #define TERM_ESC 0x1B
 #define TERM_IS_ESC_ARG(c) (((c) & 0xE0) == 0x40)
 
+/* Tab stops, every TERM_TAB columns (a power of two). */
+#define TERM_TAB 4
+
 typedef enum {
     TERM_KIND_PLAIN,
     TERM_KIND_TEXT,
