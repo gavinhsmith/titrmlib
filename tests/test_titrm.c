@@ -392,6 +392,20 @@ static void test_format(void) {
     CHECK_EQ(p->u.text.len, 202);
 }
 
+static void test_snprintf(void) {
+    char buf[8];
+    CHECK_EQ(term_snprintf(buf, sizeof buf, "%s-%d", "ab", 42), 5);
+    CHECK_STR(buf, "ab-42");
+    CHECK_EQ(term_snprintf(buf, sizeof buf, "%d|%x", -123456, 0xbeefu), 12); /* cut short */
+    CHECK_STR(buf, "-123456");
+    CHECK_EQ(term_snprintf(buf, 8, "1234567"), 7); /* exactly fits */
+    CHECK_STR(buf, "1234567");
+    CHECK_EQ(term_snprintf(NULL, 0, "%05ld", 7L), 5); /* only measures */
+    buf[0] = 'x';
+    CHECK_EQ(term_snprintf(buf, 1, "abc"), 3);
+    CHECK_EQ(buf[0], '\0');
+}
+
 static void test_border_and_title(void) {
     term_ctx_t *ctx = setup();
     term_panel_t *p = term_split(term_root(ctx), TERM_VERTICAL, TERM_FIXED(5));
@@ -1686,6 +1700,7 @@ static const struct {
     TEST(test_print_is_clipped),
     TEST(test_print_wrap_and_attr),
     TEST(test_format),
+    TEST(test_snprintf),
     TEST(test_border_and_title),
     TEST(test_glyph_blit),
     TEST(test_styles),

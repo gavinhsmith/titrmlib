@@ -13,10 +13,10 @@
 ### TITRM_VERSION
 
 ```cpp
-#define TITRM_VERSION "0.4.1"
+#define TITRM_VERSION "0.4.2"
 ```
 
-Defined in src/titrm.h:36
+Defined in src/titrm.h:37
 
 titrmlib's version, matching the release tag without the "v" (e.g. "1.0.0").
 

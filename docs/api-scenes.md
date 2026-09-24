@@ -22,7 +22,7 @@ A scene is a root panel covering the whole grid, holding the panels of one scree
 term_panel_t * term_scene_new(term_ctx_t * ctx, term_update_fn handler, void * state)
 ```
 
-Defined in src/titrm.h:249
+Defined in src/titrm.h:250
 
 Creates a scene and returns its root panel, or NULL if the pool is full. `handler` may be NULL.
 
@@ -34,7 +34,7 @@ Creates a scene and returns its root panel, or NULL if the pool is full. `handle
 void term_scene_switch(term_ctx_t * ctx, term_panel_t * scene)
 ```
 
-Defined in src/titrm.h:258
+Defined in src/titrm.h:259
 
 Makes `scene` the one shown and receiving events.
 
@@ -48,7 +48,7 @@ Sends TERM_EV_SCENE_LEAVE to the old scene's handler and TERM_EV_SCENE_ENTER to 
 term_panel_t * term_scene_active(const term_ctx_t * ctx)
 ```
 
-Defined in src/titrm.h:261
+Defined in src/titrm.h:262
 
 The active scene's root panel.
 
