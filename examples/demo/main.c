@@ -116,8 +116,9 @@ static void start_connecting(demo_t *d, int index) {
 /* Secured networks ask for a password first, in a dialog over the screen. */
 static void open_password_dialog(term_ctx_t *ctx, demo_t *d, int index) {
     d->dialog_network = index;
-    strcpy(d->dialog_title, "Password: ");
-    strncat(d->dialog_title, networks[index].ssid, sizeof d->dialog_title - sizeof "Password: ");
+    /* Titles take plain strings: format them with term_snprintf, not
+     * snprintf, which would link the C library's printf (~8 KB). */
+    term_snprintf(d->dialog_title, sizeof d->dialog_title, "Password: %s", networks[index].ssid);
 
     d->dialog = term_overlay_open_centered(ctx, 32, 6);
     term_panel_set_colors(d->dialog, TERM_COLOR_WHITE, TERM_COLOR_BLUE); /* its panels inherit */
