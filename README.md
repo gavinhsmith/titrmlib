@@ -1,19 +1,26 @@
 # titrmlib
 
 [![CI](https://github.com/gavinhsmith/titrmlib/actions/workflows/ci.yml/badge.svg)](https://github.com/gavinhsmith/titrmlib/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/gavinhsmith/titrmlib)](https://github.com/gavinhsmith/titrmlib/releases/latest)
 [![API docs](https://img.shields.io/badge/docs-API%20reference-blue)](https://gavinhsmith.github.io/titrmlib/docs/api.html)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/gavinhsmith/titrmlib/blob/main/LICENSE.md)
 [![Platform: TI-84 Plus CE](https://img.shields.io/badge/platform-TI--84%20Plus%20CE-lightgrey)](https://github.com/CE-Programming/toolchain)
 
-A terminal-style UI framework for the TI-84 Plus CE.
+**A curses-style TUI library for the TI-84 Plus CE.** Build terminal-style
+apps in C with panels, widgets, scenes, dialogs, colors and text styles, on
+a 53×30 character grid.
 
 <img src="demo.gif" alt="The demo program: a mock Wi-Fi manager with a network list, details, log, command input and status bar" width="640">
 
-titrmlib takes over the calculator's screen the way curses does on a desktop
-terminal. It draws a 53×30 character grid with its own 5×7 font, reads the
-keypad, and runs the event loop. You build the UI as a tree of panels, give
-them content, and hand control to `term_run()`. Your program never calls
-graphx itself.
+titrmlib takes over the calculator's screen the way curses (ncurses) does on
+a desktop terminal. It draws a 53×30 character grid with its own 5×7 font,
+reads the keypad, and runs the event loop. You build the UI as a tree of
+panels, give them content, and hand control to `term_run()`. Your program
+never calls graphx itself.
+
+It's written in C for the [CE C/C++ Toolchain](https://github.com/CE-Programming/toolchain)
+(CEdev), redraws only the cells that change, and is tested on the host
+and in the CEmu emulator.
 
 - **Panel tree:** split any panel into fixed, percentage or weighted-fill children, nested as deep as you need
 - **Scenes:** several full-screen panel trees, one shown at a time, each with its own event handler
@@ -69,8 +76,15 @@ feature.
 ## Adding it to your project
 
 titrmlib is compiled into your program from source. Put the repository inside
-your CEdev project, for example as a git submodule at `lib/titrmlib`, and add
-its sources to your makefile:
+your CEdev project, for example as a git submodule at `lib/titrmlib`
+(or unzip a [release](https://github.com/gavinhsmith/titrmlib/releases/latest)
+there):
+
+```sh
+git submodule add https://github.com/gavinhsmith/titrmlib lib/titrmlib
+```
+
+Then add its sources to your makefile:
 
 ```make
 CFLAGS = -Wall -Wextra -Oz -Ilib/titrmlib/src
@@ -199,13 +213,22 @@ is in [`src/FONT.md`](src/FONT.md).
 - `TERM_LINE_GAP` 0 gives 34 rows instead of 30, but capitals and digits then
   touch the line above.
 
+## Used by
+
+- [tinclib-config](https://github.com/gavinhsmith/tinclib-config): the
+  Wi-Fi setup app for [tinclib](https://github.com/gavinhsmith/tinclib),
+  which gives TI-84 Plus CE programs Wi-Fi, HTTP and HTTPS through an
+  ESP8266 board.
+
+Using titrmlib in your project? Open an issue or a pull request to add it here.
+
 ## Documentation
 
 - [API reference](docs/api.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md): development setup, building, unit and
   hardware tests, reporting issues
 - [ROADMAP.md](ROADMAP.md): planned features and known issues
-- [DESIGN.md](DESIGN.md): design for the next phase of work
+- [DESIGN.md](DESIGN.md): design of the retained panels, scenes and overlays (phase 2)
 - [src/FONT.md](src/FONT.md): character codes and glyphs
 - [AGENTS.md](AGENTS.md): design notes for AI coding agents
 

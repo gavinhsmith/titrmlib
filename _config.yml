@@ -1,3 +1,8 @@
 title: titrmlib
-description: A terminal-style UI framework for the TI-84 Plus CE.
+description: A curses-style TUI library for the TI-84 Plus CE. Panels, widgets, scenes, dialogs, colors and text styles for CE C programs.
 theme: jekyll-theme-minimal
+defaults:
+  - scope:
+      path: ""
+    values:
+      image: /demo.gif
